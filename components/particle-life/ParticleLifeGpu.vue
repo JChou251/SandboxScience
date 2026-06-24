@@ -116,8 +116,8 @@
                                         tooltip="Controls how much friction slows particles down. <br> Higher values reduce speed and help stabilize the system."
                                         :min="0" :max="1" :step="0.01" v-model="particleLife.frictionFactor" mt-2>
                             </RangeInput>
-
-                            <hr border-gray-500 my-2>
+                        </Collapse>
+                        <Collapse label="Simulation Speed" icon="i-tabler-clock-cog text-amber-500">
                             <div flex items-center justify-between>
                                 <p underline text-gray-300>Delta Time :</p>
                                 <div flex-1 pl-2>
@@ -138,10 +138,27 @@
                                 </div>
                                 <ToggleSwitch label="Manual Δt" v-model="particleLife.manualDeltaTimeEnabled" />
                             </div>
+                            <p v-if="!particleLife.manualDeltaTimeEnabled" class="text-sm text-gray-500 mt-1">
+                                Auto Δt. Set it manually to tune speed.
+                            </p>
                             <RangeInput v-if="particleLife.manualDeltaTimeEnabled"
                                         input :label="`Δt = 1/${Math.round(1 / particleLife.manualDeltaTime)}`"
                                         tooltip="Manually set the simulation time step (Δt), shown as a frame fraction (1/x). <br> <b>Higher Δt</b> → faster but particles overshoot <br> <b>Lower Δt</b> → slower but more stable. <br> <i>Disable to keep the automatic, framerate-independent Δt.</i>"
                                         :min="0.0041" :max="0.05" :step="0.0001" v-model="particleLife.manualDeltaTime" mt-2>
+                            </RangeInput>
+
+                            <hr border-gray-500 my-2>
+                            <div flex items-center justify-between>
+                                <p underline text-gray-300>Simulation FPS :</p>
+                                <ToggleSwitch label="Limit FPS" v-model="particleLife.simRateLimitEnabled" />
+                            </div>
+                            <p v-if="!particleLife.simRateLimitEnabled" class="text-sm text-gray-500 mt-1">
+                                Uncapped, matches your display. Limit it to save GPU.
+                            </p>
+                            <RangeInput v-else
+                                        input :label="`${particleLife.targetSimRate} FPS`"
+                                        tooltip="Caps the simulation's update rate (rendering stays smooth). <br> <b>Lower</b> → slower playback, cooler GPU."
+                                        :min="1" :max="144" :step="1" v-model="particleLife.targetSimRate" mt-2>
                             </RangeInput>
                         </Collapse>
                         <Collapse label="Graphics Settings" icon="i-tabler-photo-cog text-emerald-500">
@@ -455,6 +472,12 @@ export default defineComponent({
         let manualDeltaTimeEnabled: boolean = particleLife.manualDeltaTimeEnabled // Override auto Δt with a fixed value
         let manualDeltaTime: number = particleLife.manualDeltaTime // Fixed Δt (seconds) used when manualDeltaTimeEnabled
         let smoothedDeltaTime: number = 0.0083 // Smoothed delta time (s) - Initial value (1/120s)
+
+        let simRateLimitEnabled: boolean = particleLife.simRateLimitEnabled // Cap simulation steps/sec independently of the display (RAF) rate
+        let targetSimRate: number = particleLife.targetSimRate // Target simulation steps per second when simRateLimitEnabled
+        let simStepInterval: number = 1000 / targetSimRate // ms between two steps (precomputed, refreshed in the watcher)
+        let simTimeAccumulator: number = 0 // Accumulated wall-clock time (ms) waiting to be consumed by simulation steps
+        let lastStepTime: number = performance.now() // Timestamp of the last rate-limiter tick (ms)
 
         let CANVAS_WIDTH: number = 0
         let CANVAS_HEIGHT: number = 0
@@ -1257,15 +1280,14 @@ export default defineComponent({
             const startExecutionTime = performance.now()
             if (isRunning) {
                 handleDeltaTime(startExecutionTime)
-                step()
+
+                if (shouldStep(startExecutionTime)) {
+                    step()
+                } else {
+                    renderScene()
+                }
             } else {
-                const encoder = device.createCommandEncoder()
-                if (isCameraTracking) computeTrackerCameraUpdate(encoder)
-                renderParticles(encoder)
-                if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
-                if (isBrushActive && showBrushCircle) renderBrushCircle(encoder)
-                if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
-                device.queue.submit([encoder.finish()])
+                renderScene()
             }
             // device.queue.onSubmittedWorkDone().then(() => executionTime.value = performance.now() - startExecutionTime) // Approximate execution time of the GPU commands
             lastFramePointerX = pointerX
@@ -1277,6 +1299,19 @@ export default defineComponent({
             // device.queue.onSubmittedWorkDone().then(() => { --pendingFrames })
 
             animationFrameId = requestAnimationFrame(frame)
+        }
+        // -------------------------------------------------------------------------------------------------------------
+        const shouldStep = (now: number): boolean => {
+            if (!simRateLimitEnabled) return true
+
+            simTimeAccumulator += now - lastStepTime
+            lastStepTime = now
+
+            if (simTimeAccumulator >= simStepInterval) {
+                simTimeAccumulator = Math.min(simTimeAccumulator - simStepInterval, simStepInterval)
+                return true
+            }
+            return false
         }
         // -------------------------------------------------------------------------------------------------------------
         const deltaTimeData = new Float32Array(2)
@@ -1323,6 +1358,15 @@ export default defineComponent({
             if (isBrushActive && showBrushCircle) renderBrushCircle(encoder)
             if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
 
+            device.queue.submit([encoder.finish()])
+        }
+        const renderScene = () => {
+            const encoder = device.createCommandEncoder()
+            if (isCameraTracking) computeTrackerCameraUpdate(encoder)
+            renderParticles(encoder)
+            if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
+            if (isBrushActive && showBrushCircle) renderBrushCircle(encoder)
+            if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
             device.queue.submit([encoder.finish()])
         }
         // -------------------------------------------------------------------------------------------------------------
@@ -3418,6 +3462,15 @@ export default defineComponent({
         watch(() => particleLife.manualDeltaTime, (value: number) => {
             manualDeltaTime = value
             if (manualDeltaTimeEnabled) updateDeltaTimeBuffer(value)
+        })
+        watch(() => particleLife.simRateLimitEnabled, (value: boolean) => {
+            simRateLimitEnabled = value
+            simTimeAccumulator = 0
+            lastStepTime = performance.now()
+        })
+        watch(() => particleLife.targetSimRate, (value: number) => {
+            targetSimRate = value
+            simStepInterval = 1000 / value
         })
 
         watch(() => particleLife.minRadiusRange, (value: number[]) => {

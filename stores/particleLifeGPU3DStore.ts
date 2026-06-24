@@ -41,6 +41,9 @@ export const useParticleLifeGPU3DStore = defineStore('particleLifeGPU3D', () => 
     const manualDeltaTimeEnabled = ref<boolean>(false) // Override the automatic (framerate-independent) Δt with a fixed value
     const manualDeltaTime = ref<number>(0.0166) // Manual simulation time step in seconds (used only when manualDeltaTimeEnabled)
 
+    const simRateLimitEnabled = ref<boolean>(false) // Cap how many simulation steps run per second (decoupled from the display/RAF rate)
+    const targetSimRate = ref<number>(60) // Target simulation steps per second when simRateLimitEnabled (rendering stays at full RAF rate)
+
     // Define force properties
     const repel = ref<number>(1) // repel force for particles that are too close to each other
     const forceFactor = ref<number>(2) // Adjust the overall force applied between particles (can't be 0)
@@ -101,7 +104,7 @@ export const useParticleLifeGPU3DStore = defineStore('particleLifeGPU3D', () => 
         isParticleBorder, isSphereShading, sphereAmbient, sphereDiffuseStrength, sphereSpecularStrength, sphereShininess, sphereLightDir,
         selectedSpawnPositionOption, selectedRulesOption, selectedColorPaletteOption, savedPresets, isSaveModalOpen,
         cellSubdivisions, gridExtensionFactor, maxGridExtensionFactor,
-        showLiveDeltaTime, manualDeltaTimeEnabled, manualDeltaTime,
+        showLiveDeltaTime, manualDeltaTimeEnabled, manualDeltaTime, simRateLimitEnabled, targetSimRate,
         $reset
     }
 })

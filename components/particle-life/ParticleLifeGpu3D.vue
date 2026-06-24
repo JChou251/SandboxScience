@@ -99,8 +99,8 @@
                                         tooltip="Controls how much friction slows particles down. <br> Higher values reduce speed and help stabilize the system."
                                         :min="0" :max="1" :step="0.01" v-model="particleLife.frictionFactor" mt-2>
                             </RangeInput>
-
-                            <hr border-gray-500 my-2>
+                        </Collapse>
+                        <Collapse label="Simulation Speed" icon="i-tabler-clock-cog text-amber-500">
                             <div flex items-center justify-between>
                                 <p underline text-gray-300>Delta Time :</p>
                                 <div flex-1 pl-2>
@@ -121,10 +121,27 @@
                                 </div>
                                 <ToggleSwitch label="Manual Δt" v-model="particleLife.manualDeltaTimeEnabled" />
                             </div>
+                            <p v-if="!particleLife.manualDeltaTimeEnabled" class="text-sm text-gray-500 mt-1">
+                                Auto Δt. Set it manually to tune speed.
+                            </p>
                             <RangeInput v-if="particleLife.manualDeltaTimeEnabled"
                                         input :label="`Δt = 1/${Math.round(1 / particleLife.manualDeltaTime)}`"
                                         tooltip="Manually set the simulation time step (Δt), shown as a frame fraction (1/x). <br> <b>Higher Δt</b> → faster but particles overshoot <br> <b>Lower Δt</b> → slower but more stable. <br> <i>Disable to keep the automatic, framerate-independent Δt.</i>"
                                         :min="0.0041" :max="0.05" :step="0.0001" v-model="particleLife.manualDeltaTime" mt-2>
+                            </RangeInput>
+
+                            <hr border-gray-500 my-2>
+                            <div flex items-center justify-between>
+                                <p underline text-gray-300>Simulation FPS :</p>
+                                <ToggleSwitch label="Limit FPS" v-model="particleLife.simRateLimitEnabled" />
+                            </div>
+                            <p v-if="!particleLife.simRateLimitEnabled" class="text-sm text-gray-500 mt-1">
+                                Uncapped, matches your display. Limit it to save GPU.
+                            </p>
+                            <RangeInput v-else
+                                        input :label="`${particleLife.targetSimRate} FPS`"
+                                        tooltip="Caps the simulation's update rate (rendering stays smooth). <br> <b>Lower</b> → slower playback, cooler GPU."
+                                        :min="1" :max="144" :step="1" v-model="particleLife.targetSimRate" mt-2>
                             </RangeInput>
                         </Collapse>
                         <Collapse label="Graphics Settings" icon="i-tabler-photo-cog text-emerald-500">
@@ -432,6 +449,12 @@ export default defineComponent({
         let manualDeltaTimeEnabled: boolean = particleLife.manualDeltaTimeEnabled // Override auto Δt with a fixed value
         let manualDeltaTime: number = particleLife.manualDeltaTime // Fixed Δt (seconds) used when manualDeltaTimeEnabled
         let smoothedDeltaTime: number = 0.0083 // Smoothed delta time (s) - Initial value (1/120s)
+
+        let simRateLimitEnabled: boolean = particleLife.simRateLimitEnabled // Cap simulation steps/sec independently of the display (RAF) rate
+        let targetSimRate: number = particleLife.targetSimRate // Target simulation steps per second when simRateLimitEnabled
+        let simStepInterval: number = 1000 / targetSimRate // ms between two steps (precomputed, refreshed in the watcher)
+        let simTimeAccumulator: number = 0 // Accumulated wall-clock time (ms) waiting to be consumed by simulation steps
+        let lastStepTime: number = performance.now() // Timestamp of the last rate-limiter tick (ms)
 
         let CANVAS_WIDTH: number = 0
         let CANVAS_HEIGHT: number = 0
@@ -1046,7 +1069,7 @@ export default defineComponent({
             if (mode !== 'begin') writes.endOfPassWriteIndex = slot * 2 + 1
             return writes
         }
-        const resolveAndReadTimestamps = (encoder: GPUCommandEncoder) => {
+        const resolveAndReadTimestamps = (encoder: GPUCommandEncoder, didStep: boolean = true) => {
             if (!isGpuTimingsEnabled) return
             if (!timestampQuerySupported || !timestampQuerySet || !timestampResolveBuffer) return
             const staging = timestampStagingPool.find(b => b.mapState === 'unmapped')
@@ -1060,16 +1083,18 @@ export default defineComponent({
                     staging.unmap()
                     timestampStagingInFlight--
                     const ns2ms = (a: bigint, b: bigint) => Number(b - a) / 1e6
-                    const binning = ns2ms(data[0],  data[1])
-                    const forces  = ns2ms(data[2],  data[3])
-                    const advance = ns2ms(data[4],  data[5])
+                    const k = 0.15
+                    if (didStep) {
+                        const binning = ns2ms(data[0], data[1])
+                        const forces  = ns2ms(data[2], data[3])
+                        const advance = ns2ms(data[4], data[5])
+                        gpuTimings.binning = gpuTimings.binning * (1 - k) + binning * k
+                        gpuTimings.forces  = gpuTimings.forces  * (1 - k) + forces  * k
+                        gpuTimings.advance = gpuTimings.advance * (1 - k) + advance * k
+                    }
                     const render  = ns2ms(data[6],  data[7])
                     const bloom   = ns2ms(data[8],  data[9])
                     const compose = ns2ms(data[10], data[11])
-                    const k = 0.15
-                    gpuTimings.binning = gpuTimings.binning * (1 - k) + binning * k
-                    gpuTimings.forces  = gpuTimings.forces  * (1 - k) + forces  * k
-                    gpuTimings.advance = gpuTimings.advance * (1 - k) + advance * k
                     gpuTimings.render  = gpuTimings.render  * (1 - k) + render  * k
                     gpuTimings.bloom   = gpuTimings.bloom   * (1 - k) + bloom   * k
                     gpuTimings.compose = gpuTimings.compose * (1 - k) + compose * k
@@ -1089,17 +1114,32 @@ export default defineComponent({
             const startExecutionTime = performance.now()
             if (isRunning) {
                 handleDeltaTime(startExecutionTime)
-                step()
+
+                if (shouldStep(startExecutionTime)) {
+                    step()
+                } else {
+                    renderScene()
+                }
             } else {
-                const encoder = device.createCommandEncoder()
-                renderParticles(encoder)
-                resolveAndReadTimestamps(encoder)
-                device.queue.submit([encoder.finish()])
+                renderScene()
             }
 
             hasUpdateNumParticles = false
 
             animationFrameId = requestAnimationFrame(frame)
+        }
+        // -------------------------------------------------------------------------------------------------------------
+        const shouldStep = (now: number): boolean => {
+            if (!simRateLimitEnabled) return true
+
+            simTimeAccumulator += now - lastStepTime
+            lastStepTime = now
+
+            if (simTimeAccumulator >= simStepInterval) {
+                simTimeAccumulator = Math.min(simTimeAccumulator - simStepInterval, simStepInterval)
+                return true
+            }
+            return false
         }
         // -------------------------------------------------------------------------------------------------------------
         const step = () => {
@@ -1115,6 +1155,12 @@ export default defineComponent({
             renderParticles(encoder)
 
             resolveAndReadTimestamps(encoder)
+            device.queue.submit([encoder.finish()])
+        }
+        const renderScene = () => {
+            const encoder = device.createCommandEncoder()
+            renderParticles(encoder)
+            resolveAndReadTimestamps(encoder, false)
             device.queue.submit([encoder.finish()])
         }
         // -------------------------------------------------------------------------------------------------------------
@@ -2724,6 +2770,15 @@ export default defineComponent({
         watch(() => particleLife.manualDeltaTime, (value: number) => {
             manualDeltaTime = value
             if (manualDeltaTimeEnabled) updateDeltaTimeBuffer(value)
+        })
+        watch(() => particleLife.simRateLimitEnabled, (value: boolean) => {
+            simRateLimitEnabled = value
+            simTimeAccumulator = 0
+            lastStepTime = performance.now()
+        })
+        watch(() => particleLife.targetSimRate, (value: number) => {
+            targetSimRate = value
+            simStepInterval = 1000 / value
         })
 
         watch(() => particleLife.minRadiusRange, (value: number[]) => {

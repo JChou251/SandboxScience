@@ -66,6 +66,9 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
     const manualDeltaTimeEnabled = ref<boolean>(false) // Override the automatic (framerate-independent) Δt with a fixed value
     const manualDeltaTime = ref<number>(0.0166) // Manual simulation time step in seconds (used only when manualDeltaTimeEnabled)
 
+    const simRateLimitEnabled = ref<boolean>(false) // Cap how many simulation steps run per second (decoupled from the display/RAF rate)
+    const targetSimRate = ref<number>(60) // Target simulation steps per second when simRateLimitEnabled (rendering stays at full RAF rate)
+
     // Define properties for randomizing radius matrix
     const minRadiusRange = ref<number[]>([12, 24]) // Range for the random minRadius of each color
     const maxRadiusRange = ref<number[]>([32, 64]) // Range for the random maxRadius of each color
@@ -114,6 +117,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
         minRadiusRange, maxRadiusRange, currentMaxRadius,
         repel, forceFactor, frictionFactor, useSpatialHash,
         showLiveDeltaTime, manualDeltaTimeEnabled, manualDeltaTime,
+        simRateLimitEnabled, targetSimRate,
         isBrushActive, brushes, brushRadius, brushIntensity, brushType, attractForce, repulseForce, brushDirectionalForce, showBrushCircle,
         glowSize, glowIntensity, glowSteepness, particleOpacity,
         selectedSpawnPositionOption, selectedRulesOption, selectedColorPaletteOption, savedPresets, isSaveModalOpen,
