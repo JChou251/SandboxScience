@@ -58,7 +58,7 @@
                         <Collapse label="World Settings" icon="i-tabler-world-cog text-cyan-500" opened>
                             <RangeInput input label="Particle Count"
                                         tooltip="Adjust the total number of particles. <br> More particles may reveal complex interactions but can increase computational demand."
-                                        :min="16" :max="1048576" :step="16" v-model="particleLife.numParticles" @update:modelValue="setNewNumParticles">
+                                        :min="16" :max="1048576" :step="16" :maxLength="7" v-model="particleLife.numParticles" @update:modelValue="setNewNumParticles">
                             </RangeInput>
                             <RangeInput input label="Species Count"
                                         tooltip="Specify the number of particle colors. <br> Each color interacts with all others, with distinct forces and interaction ranges."
@@ -2935,7 +2935,7 @@ export default defineComponent({
 
             // .then() instead of await prevents blocking the main loop during GPU readback
             newParticleCountReadBuffer!.mapAsync(GPUMapMode.READ).then(() => {
-                const newCount = new Uint32Array(newParticleCountReadBuffer!.getMappedRange())[0]
+                const newCount = Math.max(1, new Uint32Array(newParticleCountReadBuffer!.getMappedRange())[0]) // Keep at least 1 particle so buffers are never zero-sized
                 newParticleCountReadBuffer!.unmap()
 
                 if (newCount < NUM_PARTICLES) {
