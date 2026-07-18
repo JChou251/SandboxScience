@@ -405,6 +405,7 @@ import particleAdvanceShaderCode from 'assets/particle-life-gpu/shaders/compute/
 import particleAdvanceBrushShaderCode from 'assets/particle-life-gpu/shaders/compute/particleAdvance_brush.wgsl?raw';
 
 import renderShaderCode from 'assets/particle-life-gpu/shaders/render/render_normal.wgsl?raw';
+// import renderShaderCode from 'assets/particle-life-gpu/shaders/render/render_test.wgsl?raw';
 //import energyStateShaderCode from 'assets/particle-life-gpu/shaders/render/render_energy_state.wgsl?raw';
 import offscreenShaderCode from 'assets/particle-life-gpu/shaders/render/offscreen_render_vertex.wgsl?raw';
 import infiniteCompositorShaderCode from 'assets/particle-life-gpu/shaders/compose/infinite_compositor.wgsl?raw';
