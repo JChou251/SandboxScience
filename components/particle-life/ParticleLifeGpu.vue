@@ -534,7 +534,7 @@ export default defineComponent({
         let PARTICLE_SIZE: number = particleLife.particleSize
         let NUM_TYPES: number = particleLife.numColors
         let NEW_NUM_TYPES: number = NUM_TYPES
-        let isParticleGlow: boolean = particleLife.isParticleGlow // Enable glow effect for the particles
+        let isParticleGlow: boolean = false // Enable glow effect for the particles
         let isAdditiveBlending = particleLife.isAdditiveBlending // Use additive blending for rendering particles
         let isWallRepel: boolean = particleLife.isWallRepel // Enable walls X and Y for the particles
         let isWallWrap: boolean = particleLife.isWallWrap // Enable wrapping for the particles
@@ -2047,7 +2047,8 @@ export default defineComponent({
                 layout: particleBufferReadOnlyBindGroupLayout,
                 entries: [
                     { binding: 0, resource: { buffer: particleBuffer! } },
-                    { binding: 1, resource: { buffer: colorBuffer! } }
+                    { binding: 1, resource: { buffer: colorBuffer! } },
+                    { binding: 2, resource: { buffer: particleEnergyBuffer! } }
                 ],
             })
             particleSortBindGroup = device.createBindGroup({
@@ -2149,6 +2150,7 @@ export default defineComponent({
                 entries: [
                     { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // particleBuffer
                     { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }, // colorBuffer
+                    { binding: 2, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }, // particleEnergyBuffer
                 ],
             })
             binFillSizeBindGroupLayout = device.createBindGroupLayout({
@@ -3371,7 +3373,7 @@ export default defineComponent({
         }
         watch(() => particleLife.isRunning, (value: boolean) => isRunning = value)
         watch(() => particleLife.useSpatialHash, (value: boolean) => useSpatialHash = value)
-        watch(() => particleLife.isParticleGlow, (value: boolean) => isParticleGlow = value)
+        //watch(() => particleLife.isParticleGlow, (value: boolean) => isParticleGlow = value)
         watch(() => particleLife.isAdditiveBlending, (value: boolean) => isAdditiveBlending = value)
         watch(() => particleLife.isBrushActive, (value: boolean) => isBrushActive = value)
         watch(() => particleLife.brushType, (value: number) => brushType = value)
