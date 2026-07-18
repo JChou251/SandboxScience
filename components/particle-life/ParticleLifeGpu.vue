@@ -405,6 +405,7 @@ import particleAdvanceShaderCode from 'assets/particle-life-gpu/shaders/compute/
 import particleAdvanceBrushShaderCode from 'assets/particle-life-gpu/shaders/compute/particleAdvance_brush.wgsl?raw';
 
 import renderShaderCode from 'assets/particle-life-gpu/shaders/render/render_normal.wgsl?raw';
+//import energyStateShaderCode from 'assets/particle-life-gpu/shaders/render/render_energy_state.wgsl?raw';
 import offscreenShaderCode from 'assets/particle-life-gpu/shaders/render/offscreen_render_vertex.wgsl?raw';
 import infiniteCompositorShaderCode from 'assets/particle-life-gpu/shaders/compose/infinite_compositor.wgsl?raw';
 import renderGlowShaderCode from 'assets/particle-life-gpu/shaders/render/particle_render_glow.wgsl?raw';
@@ -586,6 +587,7 @@ export default defineComponent({
         let binOffsetBuffer: GPUBuffer | undefined
         let binOffsetTempBuffer: GPUBuffer | undefined
         let particleBuffer: GPUBuffer | undefined
+        let particleEnergyBuffer: GPUBuffer | undefined
         let particleTempBuffer: GPUBuffer | undefined
         let binPrefixSumStepSizeBuffer: GPUBuffer | undefined
 
@@ -1655,6 +1657,7 @@ export default defineComponent({
         const updateParticleBuffers = (hasInitialParticles: boolean = false) => {
             if (particleBuffer) particleBuffer?.destroy(); particleBuffer = undefined;
             if (particleTempBuffer) particleTempBuffer?.destroy(); particleTempBuffer = undefined;
+            if (particleEnergyBuffer) particleEnergyBuffer?.destroy(); particleEnergyBuffer = undefined;
 
             particleBuffer = device.createBuffer({
                 size: NUM_PARTICLES * 20,
@@ -1666,6 +1669,10 @@ export default defineComponent({
                 particleBuffer.unmap()
             }
             particleTempBuffer = device.createBuffer({
+                size: particleBuffer.size,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            })
+            particleEnergyBuffer = device.createBuffer({
                 size: particleBuffer.size,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             })
@@ -2058,6 +2065,7 @@ export default defineComponent({
                     { binding: 1, resource: { buffer: particleBuffer! } },
                     { binding: 2, resource: { buffer: binOffsetBuffer! } },
                     { binding: 3, resource: { buffer: interactionMatrixBuffer! } },
+                    { binding: 4, resource: { buffer: particleEnergyBuffer! } },
                 ],
             })
             bruteForceBindGroup = device.createBindGroup({
@@ -2168,6 +2176,7 @@ export default defineComponent({
                     { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // particleBuffer
                     { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // binOffsetBuffer
                     { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // interactionMatrixBuffer
+                    { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // particleEnergyBuffer
                 ],
             })
             bruteForceBindGroupLayout = device.createBindGroupLayout({

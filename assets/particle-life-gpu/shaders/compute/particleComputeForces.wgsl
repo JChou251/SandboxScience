@@ -27,7 +27,7 @@ struct Particle {
     vx : f32,
     vy : f32,
     particleType : f32,
-    //TODO: energystate : u32,
+    //energystate : u32,
 }
 struct BinInfo {
     gridSize : vec2i,
@@ -66,6 +66,7 @@ fn get_interaction(index: u32) -> vec3<f32> {
 @group(0) @binding(1) var<storage, read_write> particlesDestination : array<Particle>;
 @group(0) @binding(2) var<storage, read> binOffset : array<u32>;
 @group(0) @binding(3) var<storage, read> interactions: InteractionMatrix;
+@group(0) @binding(4) var<storage, read_write> particlesEnergy: array<i32>;
 
 @group(1) @binding(0) var<uniform> options : SimOptions;
 @group(2) @binding(0) var<uniform> deltaTime : f32;
@@ -99,6 +100,7 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 
     var totalForce = vec2f(0.0, 0.0);
     let particlePosition = vec2f(particle.x, particle.y);
+    var totalEnergy = 0;
 
     for (var binX = binXMin; binX <= binXMax; binX += 1) {
         for (var binY = binYMin; binY <= binYMax; binY += 1) {
@@ -135,15 +137,13 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                 let interaction = get_interaction(myTypeOffset + otherType);
                 let maxR = interaction.z;
 
-                //TODO: insert energy state tracking rules
-                // if (distSquared < maxR * maxR) -> add energy state
-                // else -> subtract energy state
-
                 if (distSquared < maxR * maxR) {
                     let invDist = inverseSqrt(distSquared);
                     let dist = distSquared * invDist;
                     let minR = interaction.y;
                     var force : f32;
+
+                    totalEnergy++;
 
                     //TODO: Implement alternate toggleable calculation which calculates repel force proportional to the current energy state
                     if (dist < minR) {
@@ -171,6 +171,8 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     particle.vy = fma(totalForce.y, forceFactor, particle.vy);
 
     particlesDestination[id.x] = particle;
+
+    particlesEnergy[id.x] = totalEnergy;
 }
 
 //@compute @workgroup_size(64)
