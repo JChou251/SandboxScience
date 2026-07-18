@@ -9,6 +9,10 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
 
     const isRunning = ref<boolean>(true) // Is the simulation running
 
+    //TODO: introduce definition to be used when heatmap view is active, taking the form of calculated values: picks a value on a color gradient defined by the particle's current neighborhood size
+    //const isHeatMapView = ref<boolean>(false)
+    //const heatMapColors = computed({...})
+    //const energyStates = computed({...})
     const currentColors = ref<Float32Array>() // Current colors for the particles
     const rulesMatrix = ref<number[][]>([]) // Rules matrix for each color
     const minRadiusMatrix = ref<number[][]>([]) // Min radius matrix for each color
@@ -58,6 +62,9 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
     const trackerCameraSmoothing = ref<number>(0.75) // Smoothing factor for camera tracking (0 = no smoothing, 1 = instant)
 
     // Define force properties
+    //TODO: introduce an alternative repel definition that is a calculated value: increases in proportion to the current neighborhood size of the particle
+    //const isAlternateRepelMode = ref<boolean>(false)
+    //const alternate_repel = computed({})
     const repel = ref<number>(1) // repel force for particles that are too close to each other
     const forceFactor = ref<number>(1.0) // Adjust the overall force applied between particles (can't be 0)
     const frictionFactor = ref<number>(0.3) // Slow down the particles (0 to 1, where 0 is no friction)

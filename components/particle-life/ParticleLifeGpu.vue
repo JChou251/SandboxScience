@@ -3319,6 +3319,8 @@ export default defineComponent({
         // -------------------------------------------------------------------------------------------------------------
         // -------------------------------------------------------------------------------------------------------------
         // -------------------------------------------------------------------------------------------------------------
+        
+        //TODO: Possibly the spot to implement the alternative color definition for the heatmap view?
         const colorRgbStrings = computed(() => {
             const arr = particleLife.currentColors
             if (!arr) return []

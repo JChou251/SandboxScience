@@ -40,6 +40,7 @@ To run Sandbox Science locally, follow these steps:
 
 4. **Open your browser:**
    Visit http://localhost:3000 to explore the site locally.
+   To go directly to the Particle Life Simulation: http://localhost:3000/particle-life 
 
 ## 📦 Build
 

@@ -27,6 +27,7 @@ struct Particle {
     vx : f32,
     vy : f32,
     particleType : f32,
+    //TODO: energystate : u32,
 }
 struct BinInfo {
     gridSize : vec2i,
@@ -134,12 +135,17 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                 let interaction = get_interaction(myTypeOffset + otherType);
                 let maxR = interaction.z;
 
+                //TODO: insert energy state tracking rules
+                // if (distSquared < maxR * maxR) -> add energy state
+                // else -> subtract energy state
+
                 if (distSquared < maxR * maxR) {
                     let invDist = inverseSqrt(distSquared);
                     let dist = distSquared * invDist;
                     let minR = interaction.y;
                     var force : f32;
 
+                    //TODO: Implement alternate toggleable calculation which calculates repel force proportional to the current energy state
                     if (dist < minR) {
 //                        force = (options.repel / minR) * dist - options.repel;
 //                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
