@@ -88,7 +88,8 @@ fn vertex_main(instanceIndex: u32, vertexIndex: u32, size: f32) -> VertexOutput 
 }
 @vertex
 fn vertexGlow(@builtin(instance_index) instanceIndex: u32, @builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
-    return vertex_main(instanceIndex, vertexIndex, options.particleSize * glowOptions.glowSize);
+    //return vertex_main(instanceIndex, vertexIndex, options.particleSize * glowOptions.glowSize);
+    return vertex_main(instanceIndex, vertexIndex, options.particleSize * 0);
 }
 @vertex
 fn vertexCircle(@builtin(instance_index) instanceIndex: u32, @builtin(vertex_index) vertexIndex: u32) -> VertexOutput {

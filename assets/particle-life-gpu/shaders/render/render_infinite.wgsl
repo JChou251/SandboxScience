@@ -101,7 +101,8 @@ fn infiniteVertex(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_ind
 }
 @vertex
 fn infiniteVertexGlow(@builtin(instance_index) instanceIndex: u32, @builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
-    return vertex_main(instanceIndex, vertexIndex, options.particleSize * glowOptions.glowSize);
+    //return vertex_main(instanceIndex, vertexIndex, options.particleSize * glowOptions.glowSize);
+    return vertex_main(instanceIndex, vertexIndex, options.particleSize * 0);
 }
 @vertex
 fn infiniteVertexCircle(@builtin(instance_index) instanceIndex: u32, @builtin(vertex_index) vertexIndex: u32) -> VertexOutput {

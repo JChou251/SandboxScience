@@ -1265,7 +1265,7 @@ export default defineComponent({
                 const encoder = device.createCommandEncoder()
                 if (isCameraTracking) computeTrackerCameraUpdate(encoder)
                 renderParticles(encoder)
-                if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
+                // if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
                 if (isBrushActive && showBrushCircle) renderBrushCircle(encoder)
                 if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
                 device.queue.submit([encoder.finish()])
@@ -1319,7 +1319,7 @@ export default defineComponent({
             
             renderParticles(encoder)
 
-            if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
+            // if (isDebugBinsActive && useSpatialHash) renderDebugBins(encoder)
             if (isBrushActive && showBrushCircle) renderBrushCircle(encoder)
             if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
 
@@ -1521,40 +1521,40 @@ export default defineComponent({
             renderPass.end()
         }
         // -------------------------------------------------------------------------------------------------------------
-        const renderDebugBins = (encoder: GPUCommandEncoder) => {
-            if (!isRunning && hasUpdateNumParticles) { // Compute binning for debug rendering only when not running so new particles are ordered correctly
-                const binningComputePass = encoder.beginComputePass()
-                binningComputePass.setPipeline(binClearSizePipeline)
-                binningComputePass.setBindGroup(0, particleBufferReadOnlyBindGroup)
-                binningComputePass.setBindGroup(1, simOptionsBindGroup)
-                binningComputePass.setBindGroup(2, binFillSizeBindGroup)
-                binningComputePass.dispatchWorkgroups(Math.ceil((binCount + 1) / 64))
-                binningComputePass.setPipeline(binFillSizePipeline)
-                binningComputePass.dispatchWorkgroups(Math.ceil(NUM_PARTICLES / 64))
-                binningComputePass.setPipeline(binPrefixSumPipeline)
-                for (let i = 0; i < prefixSumIterations; ++i) {
-                    binningComputePass.setBindGroup(0, binPrefixSumBindGroup[i % 2], [i * 256])
-                    binningComputePass.dispatchWorkgroups(Math.ceil((binCount + 1) / 64))
-                }
-                binningComputePass.end()
-            }
+        // const renderDebugBins = (encoder: GPUCommandEncoder) => {
+        //     if (!isRunning && hasUpdateNumParticles) { // Compute binning for debug rendering only when not running so new particles are ordered correctly
+        //         const binningComputePass = encoder.beginComputePass()
+        //         binningComputePass.setPipeline(binClearSizePipeline)
+        //         binningComputePass.setBindGroup(0, particleBufferReadOnlyBindGroup)
+        //         binningComputePass.setBindGroup(1, simOptionsBindGroup)
+        //         binningComputePass.setBindGroup(2, binFillSizeBindGroup)
+        //         binningComputePass.dispatchWorkgroups(Math.ceil((binCount + 1) / 64))
+        //         binningComputePass.setPipeline(binFillSizePipeline)
+        //         binningComputePass.dispatchWorkgroups(Math.ceil(NUM_PARTICLES / 64))
+        //         binningComputePass.setPipeline(binPrefixSumPipeline)
+        //         for (let i = 0; i < prefixSumIterations; ++i) {
+        //             binningComputePass.setBindGroup(0, binPrefixSumBindGroup[i % 2], [i * 256])
+        //             binningComputePass.dispatchWorkgroups(Math.ceil((binCount + 1) / 64))
+        //         }
+        //         binningComputePass.end()
+        //     }
 
-            const renderPass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view: ctx.getCurrentTexture().createView(),
-                    loadOp: 'load',
-                    clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-                    storeOp: 'store',
-                }],
-            })
-            renderPass.setPipeline(renderDebugBinsPipeline)
-            renderPass.setBindGroup(0, renderDebugBinsBindGroup)
-            renderPass.setBindGroup(1, debugOptionsBindGroup)
-            renderPass.setBindGroup(2, simOptionsBindGroup)
-            renderPass.setBindGroup(3, cameraBindGroup)
-            renderPass.draw(4, binCount, 0, 0)
-            renderPass.end()
-        }
+        //     const renderPass = encoder.beginRenderPass({
+        //         colorAttachments: [{
+        //             view: ctx.getCurrentTexture().createView(),
+        //             loadOp: 'load',
+        //             clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
+        //             storeOp: 'store',
+        //         }],
+        //     })
+        //     renderPass.setPipeline(renderDebugBinsPipeline)
+        //     renderPass.setBindGroup(0, renderDebugBinsBindGroup)
+        //     renderPass.setBindGroup(1, debugOptionsBindGroup)
+        //     renderPass.setBindGroup(2, simOptionsBindGroup)
+        //     renderPass.setBindGroup(3, cameraBindGroup)
+        //     renderPass.draw(4, binCount, 0, 0)
+        //     renderPass.end()
+        // }
         // -------------------------------------------------------------------------------------------------------------
         const renderInfiniteMirrorWithOffscreenTexture = (encoder: GPUCommandEncoder) => {
             const renderOffscreenPass = encoder.beginRenderPass({
@@ -2550,18 +2550,18 @@ export default defineComponent({
                 }] },
                 primitive: { topology: 'triangle-strip' },
             })
-            const renderBinsShader = device.createShaderModule({ code: renderBinsShaderCode });
-            renderDebugBinsPipeline = device.createRenderPipeline({
-                layout: device.createPipelineLayout({
-                    bindGroupLayouts: [renderDebugBinsBindGroupLayout, debugOptionsBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout]
-                }),
-                vertex: { module: renderBinsShader, entryPoint: 'vertexMain' },
-                fragment: { module: renderBinsShader, entryPoint: 'fragmentMain', targets: [{
-                        format: navigator.gpu.getPreferredCanvasFormat(),
-                        blend: particleNormalBlending,
-                    }] },
-                primitive: { topology: 'triangle-strip' },
-            })
+            // const renderBinsShader = device.createShaderModule({ code: renderBinsShaderCode });
+            // renderDebugBinsPipeline = device.createRenderPipeline({
+            //     layout: device.createPipelineLayout({
+            //         bindGroupLayouts: [renderDebugBinsBindGroupLayout, debugOptionsBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout]
+            //     }),
+            //     vertex: { module: renderBinsShader, entryPoint: 'vertexMain' },
+            //     fragment: { module: renderBinsShader, entryPoint: 'fragmentMain', targets: [{
+            //             format: navigator.gpu.getPreferredCanvasFormat(),
+            //             blend: particleNormalBlending,
+            //         }] },
+            //     primitive: { topology: 'triangle-strip' },
+            // })
             // ---------------------------------------------------------------------------------------------------------
             const renderTrackerShader = device.createShaderModule({ code: renderTrackerShaderCode })
             renderTrackerPipeline = device.createRenderPipeline({
