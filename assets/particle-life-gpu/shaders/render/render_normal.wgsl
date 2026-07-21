@@ -38,6 +38,11 @@ struct SimMetrics {
     particlesEnergy: array<i32>,
 }
 
+struct DebugOptions {
+    isHeatmapActive: u32,
+    maxParticleCount: f32,
+};
+
 const QUAD_VERTICES = array<vec2<f32>, 4>(
     vec2<f32>(-1.0, -1.0),
     vec2<f32>( 1.0, -1.0),
@@ -50,6 +55,7 @@ const QUAD_VERTICES = array<vec2<f32>, 4>(
 @group(0) @binding(2) var<storage, read> metrics: SimMetrics;
 @group(1) @binding(0) var<uniform> options: SimOptions;
 @group(2) @binding(0) var<uniform> camera: Camera;
+@group(3) @binding(0) var<uniform> debugOptions: DebugOptions;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -71,7 +77,11 @@ fn vertexMain(
     let energy = metrics.particlesEnergy[instanceIndex];
 
     //TODO: Make this toggleable
-    let color = colors[u32(particle.particleType)];
+    let color = select(
+        colors[u32(particle.particleType)],
+        energyState_to_color(f32(energy)),
+        debugOptions.isHeatmapActive == 1u
+    );
     //let color = energyState_to_color(f32(energy));
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
@@ -95,14 +105,16 @@ fn energyState_to_color(energy:f32) -> vec4<f32>{
     let adj_energy = energy;
 
 	//let heat_factor = adj_energy/f32(metrics.max_energy) ; // compare all energy states to the current maximal state in the system
-    let heat_factor = adj_energy/f32(10) ;
+    // let heat_factor = adj_energy/f32(10) ;
+    let heat_factor = f32(adj_energy/debugOptions.maxParticleCount);
 
-	//let scaled_heat_factor = 1 / (1 + exp(-heat_factor)); //sigmoid transform to regularize values
-    let scaled_heat_factor = heat_factor;
+	//let scaled_heat_factor = 1 / (1 + exp(heat_factor)); //sigmoid transform to regularize values
+    //let scaled_heat_factor = heat_factor;
+    let scaled_heat_factor = pow(heat_factor,2); //transform so that extreme values are more visible
 
     //Project regularized values onto a gradient
     //Gradient: #00ffff - #ff6666
-    return vec4<f32>(f32(scaled_heat_factor * 255), f32(255 - (scaled_heat_factor * 153)), f32(255 - (scaled_heat_factor * 153)), 1.0);
+    return vec4<f32>(f32(scaled_heat_factor * 255f), f32(255f - (scaled_heat_factor * 153f)), f32(255f - (scaled_heat_factor * 153f)), 1.0);
 
 }
 

@@ -274,19 +274,20 @@
 
                                 <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Spatial Bins Overlay :</p>
                                 <div flex items-center gap-2>
-                                    <SelectInput name="debug-bins-mode"
+                                    <!-- <SelectInput name="debug-bins-mode"
                                                  :model-value="particleLife.isDebugHeatmapActive ? 'heatmap' : 'grid'"
                                                  @update:model-value="particleLife.isDebugHeatmapActive = $event === 'heatmap'"
                                                  :options="[
                                                  { id: 'grid', name: 'Grid', icon: 'i-tabler-grid-dots', category: 'Display Mode' },
                                                  { id: 'heatmap', name: 'Heatmap', icon: 'i-tabler-flame', category: 'Display Mode' }
                                              ]">
-                                    </SelectInput>
-                                    <ToggleSwitch label="Active" colorful-label v-model="particleLife.isDebugBinsActive" />
+                                    </SelectInput> -->
+                                    <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" @update:model-value="particleLife.isDebugHeatmapActive = $event" />
+                                    <!-- <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" /> -->
                                 </div>
                                 <RangeInput v-show="particleLife.isDebugHeatmapActive" input label="Heatmap Scale"
                                             tooltip="Sets the number of particles in a cell that maps to the highest value on the heatmap gradient. <br> Adjusting this value scales the density visualization, helping to fine-tune how particle concentrations are displayed."
-                                            :min="640" :max="16000" :step="16" v-model="particleLife.debugMaxParticleCount" mt-2>
+                                            :min="1" :max="500" :step="1" v-model="particleLife.debugMaxParticleCount" mt-2>
                                 </RangeInput>
                                 <hr border-gray-500 my-2>
                             </div>
@@ -1427,6 +1428,7 @@ export default defineComponent({
                 hdrRenderPass.setBindGroup(0, particleBufferReadOnlyBindGroup)
                 hdrRenderPass.setBindGroup(1, simOptionsBindGroup)
                 hdrRenderPass.setBindGroup(2, cameraBindGroup)
+                hdrRenderPass.setBindGroup(3, debugOptionsBindGroup)
                 if (isMirrorWrap) {
                     hdrRenderPass.setBindGroup(3, glowOptionsBindGroup)
                     hdrRenderPass.setPipeline(renderMirrorGlowPipeline)
@@ -1510,6 +1512,7 @@ export default defineComponent({
                 renderPass.setBindGroup(0, particleBufferReadOnlyBindGroup)
                 renderPass.setBindGroup(1, simOptionsBindGroup)
                 renderPass.setBindGroup(2, cameraBindGroup)
+                renderPass.setBindGroup(3, debugOptionsBindGroup)
                 renderPass.draw(4, NUM_PARTICLES)
                 renderPass.end()
             }
@@ -1883,6 +1886,7 @@ export default defineComponent({
             const debugOptionsData = new ArrayBuffer(8)
             const debugOptionsView = new DataView(debugOptionsData)
             debugOptionsView.setUint32(0, isDebugHeatmapActive ? 1 : 0, true)
+            console.log("isDebugHeatmapActive: "+isDebugHeatmapActive);
             debugOptionsView.setFloat32(4, debugMaxParticleCount, true)
 
             if (!debugOptionsBuffer) {
@@ -2483,7 +2487,7 @@ export default defineComponent({
             const renderShader = device.createShaderModule({ code: renderShaderCode })
             renderPipeline = device.createRenderPipeline({
                 layout: device.createPipelineLayout({
-                    bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout],
+                    bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout, debugOptionsBindGroupLayout],
                 }),
                 vertex: { module: renderShader, entryPoint: 'vertexMain' },
                 fragment: { module: renderShader, entryPoint: 'fragmentMain', targets: [{
@@ -2494,7 +2498,7 @@ export default defineComponent({
             })
             renderPipelineAdditive = device.createRenderPipeline({
                 layout: device.createPipelineLayout({
-                    bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout,],
+                    bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout,debugOptionsBindGroupLayout],
                 }),
                 vertex: { module: renderShader, entryPoint: 'vertexMain'},
                 fragment: { module: renderShader, entryPoint: 'fragmentMain', targets: [{

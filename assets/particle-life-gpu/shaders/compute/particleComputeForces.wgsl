@@ -162,12 +162,12 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 //                        force = (options.repel / minR) * dist - options.repel;
 //                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
 //                        force = (dist / minR - 1.0) * options.repel;
-                        force = fma(dist / minR, repelForce*(1+energy_factor), -repelForce*(1+energy_factor));
+                        force = fma(dist / minR, repelForce*(1-energy_factor), -repelForce*(1-energy_factor));
                     } else {
                         let rule = interaction.x;
                         let mid = (minR + maxR) * 0.5;
                         let slope = rule / (mid - minR);
-                        force = fma(-slope, abs(dist - mid), rule);
+                        force = fma(-slope, abs(dist - mid), rule*(1+energy_factor));
                     }
 
                     let scaledForce = force * invDist;
