@@ -33,6 +33,11 @@ struct Camera {
     scaleY: f32,
 }
 
+struct SimMetrics {
+    max_energy: i32,
+    particlesEnergy: array<i32>,
+}
+
 const QUAD_VERTICES = array<vec2<f32>, 4>(
     vec2<f32>(-1.0, -1.0),
     vec2<f32>( 1.0, -1.0),
@@ -40,14 +45,9 @@ const QUAD_VERTICES = array<vec2<f32>, 4>(
     vec2<f32>( 1.0,  1.0)
 );
 
-//this variable might not be carrying over. As it currently stands, it acts as a static threshold rather than a dynamic scaling
-//However, we might be able to repurpose this static threshold as some sort of "alive vs dead" visualization (individuals who are above the energy state threshold are cosnidered "alive")
-//TODO: May need to pass it in a new binding: SimMetrics
-var<private> max_energy = 10000f;
-
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read> colors: array<vec4<f32>>;
-@group(0) @binding(2) var<storage, read> particlesEnergy: array<i32>;
+@group(0) @binding(2) var<storage, read> metrics: SimMetrics;
 @group(1) @binding(0) var<uniform> options: SimOptions;
 @group(2) @binding(0) var<uniform> camera: Camera;
 
@@ -68,15 +68,11 @@ fn vertexMain(
     let particle = particles[instanceIndex];
     let particleCenterPos = vec2f(particle.x, particle.y);
 
-    let energy = f32(particlesEnergy[instanceIndex]);
-
-    if(energy > max_energy){
-        max_energy = energy;
-    }
+    let energy = metrics.particlesEnergy[instanceIndex];
 
     //TODO: Make this toggleable
-    //let color = colors[u32(particle.particleType)];
-    let color = energyState_to_color(energy);
+    let color = colors[u32(particle.particleType)];
+    //let color = energyState_to_color(f32(energy), f32(metrics.max_energy));
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
     let cameraCenter = vec2f(camera.centerX, camera.centerY);
@@ -93,18 +89,20 @@ fn vertexMain(
     );
 }
 
-fn energyState_to_color(energy:f32) -> vec4<f32>{
+fn energyState_to_color(energy:f32, max_energy:f32) -> vec4<f32>{
 
     let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
+    //let adj_energy = energy;
 
 	let heat_factor = adj_energy/max_energy; // compare all energy states to the current maximal state in the system
 
-	//let scaled_heat_factor = 1 / (1 + exp(-(heat_factor))); //sigmoid transform to regularize values
-    let scaled_heat_factor = heat_factor;
+	let scaled_heat_factor = 1 / (1 + exp(-(heat_factor))); //sigmoid transform to regularize values
+    // let scaled_heat_factor = heat_factor;
 
     //Project regularized values onto a gradient
     //Gradient: #00ffff - #ff6666
     return vec4<f32>(f32(scaled_heat_factor * 255), f32(255 - scaled_heat_factor * 153), f32(255 - scaled_heat_factor * 153), 1.0);
+
 }
 
 @fragment

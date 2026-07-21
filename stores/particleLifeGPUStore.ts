@@ -9,10 +9,9 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
 
     const isRunning = ref<boolean>(true) // Is the simulation running
 
-    //TODO: introduce definition to be used when heatmap view is active, taking the form of calculated values: picks a value on a color gradient defined by the particle's current neighborhood size
-    //const isHeatMapView = ref<boolean>(false)
-    //const heatMapColors = computed({...})
-    //const energyStates = computed({...})
+    const energyStates = ref<Int32Array>() // Current energy states for the particles
+    const maxEnergy = ref<number>(0)
+
     const currentColors = ref<Float32Array>() // Current colors for the particles
     const rulesMatrix = ref<number[][]>([]) // Rules matrix for each color
     const minRadiusMatrix = ref<number[][]>([]) // Min radius matrix for each color
@@ -112,6 +111,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
         engineType, sidebarLeftOpen, isLockedPointer, isHudLocked,
         isRunning,
         rulesMatrix, minRadiusMatrix, maxRadiusMatrix, currentColors,
+        energyStates,maxEnergy,
         simWidth, simHeight, linkProportions,
         numParticles, particleSize, numColors, zoomSmoothing, panSmoothing,
         is3D, isParticleGlow, isAdditiveBlending, isWallRepel, isWallWrap, wallState, isMirrorWrap, isInfiniteMirrorWrap, mirrorWrapCount, screenMultiplierForGridSize,

@@ -270,6 +270,8 @@
                         <Collapse label="Debug Tools" icon="i-tabler-bug text-rose-500"
                                   tooltip="Provides tools for visualizing the simulation's internal state. <br> Toggle the grid view to see spatial bins or activate a heatmap to analyze particle density. <br> These features are useful for debugging and performance tuning.">
                             <div v-show="particleLife.useSpatialHash">
+                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Maximal Energy State :</p>
+
                                 <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Spatial Bins Overlay :</p>
                                 <div flex items-center gap-2>
                                     <SelectInput name="debug-bins-mode"
@@ -525,6 +527,10 @@ export default defineComponent({
         let driftCamTransitionProgress: number = 0 // Smoothly blend camera position from its current location to the drift trajectory when driftCam is enabled, and reset to 0 whenever the user manually pans/zooms the camera, allowing for a seamless transition back to the drift movement
         let driftCamPhase = { x1: 0, x2: 0, y1: 0, y2: 0, z1: 0, z2: 0 } // Phase offsets for the sine waves controlling camera movement and zoom
 
+        //Define properties for tracking simulation metrics
+        let energyStates: Int32Array
+        let maxEnergy: number = 1
+
         // Define variables for the simulation
         let repel: number = particleLife.repel // Repel force between particles
         let forceFactor: number = particleLife.forceFactor // Adjust the overall force applied between particles (can't be 0)
@@ -588,7 +594,7 @@ export default defineComponent({
         let binOffsetBuffer: GPUBuffer | undefined
         let binOffsetTempBuffer: GPUBuffer | undefined
         let particleBuffer: GPUBuffer | undefined
-        let particleEnergyBuffer: GPUBuffer | undefined
+        let simMetricsBuffer: GPUBuffer | undefined
         let particleTempBuffer: GPUBuffer | undefined
         let binPrefixSumStepSizeBuffer: GPUBuffer | undefined
 
@@ -1202,6 +1208,9 @@ export default defineComponent({
             // setMaxRadiusMatrix([[65, 72, 80, 66, 72, 67, 79],[69, 61, 75, 73, 69, 70, 73],[80, 69, 71, 74, 67, 62, 61],[73, 79, 70, 70, 70, 72, 79],[67, 65, 74, 76, 64, 77, 71],[61, 68, 72, 64, 69, 64, 79],[72, 68, 77, 74, 63, 70, 75]])
             // particleLife.currentMaxRadius = 80
 
+            //reset metrics
+            maxEnergy = 1;
+
             console.log("Rules Matrix:", rulesMatrix);
             console.log("Min Radius Matrix:", minRadiusMatrix);
             console.log("Max Radius Matrix:", maxRadiusMatrix);
@@ -1656,9 +1665,15 @@ export default defineComponent({
             }
         }
         const updateParticleBuffers = (hasInitialParticles: boolean = false) => {
+
+            const simMetricsData = new ArrayBuffer(80)
+            const simMetricsView = new DataView(simMetricsData)
+            simMetricsView.setInt32(0, maxEnergy, true)
+
+            if (simMetricsBuffer) simMetricsBuffer?.destroy(); simMetricsBuffer = undefined;
+
             if (particleBuffer) particleBuffer?.destroy(); particleBuffer = undefined;
             if (particleTempBuffer) particleTempBuffer?.destroy(); particleTempBuffer = undefined;
-            if (particleEnergyBuffer) particleEnergyBuffer?.destroy(); particleEnergyBuffer = undefined;
 
             particleBuffer = device.createBuffer({
                 size: NUM_PARTICLES * 20,
@@ -1673,10 +1688,26 @@ export default defineComponent({
                 size: particleBuffer.size,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             })
-            particleEnergyBuffer = device.createBuffer({
+            simMetricsBuffer = device.createBuffer({
                 size: particleBuffer.size,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             })
+
+            if (!simMetricsBuffer) {
+                simMetricsBuffer = device.createBuffer({
+                    size: simMetricsData.byteLength,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                    mappedAtCreation: true,
+                })
+                new Uint8Array(simMetricsBuffer.getMappedRange()).set(new Uint8Array(simMetricsData))
+                simMetricsBuffer.unmap()
+            } else if (isEraseCompletionPending) {
+                // Skip writing during erase to avoid conflicts with GPU-side copyBufferToBuffer
+                device.queue.writeBuffer(simMetricsBuffer, 0, simMetricsData, 0, 20)
+                device.queue.writeBuffer(simMetricsBuffer, 24, simMetricsData, 24, 56)
+            } else {
+                device.queue.writeBuffer(simMetricsBuffer, 0, simMetricsData)
+            }
         }
         const updateEraseCompactBuffers = () => {
             if (particleKeepFlagsBuffer) particleKeepFlagsBuffer.destroy(); particleKeepFlagsBuffer = undefined
@@ -1886,6 +1917,9 @@ export default defineComponent({
             targetTrackerCameraOffset = { x: 0, y: 0 }
         }
         const updateInteractionMatrixBuffer = () => {
+
+            maxEnergy = 1;
+
             const stride = 4; // 4 octets par couple
             const interactionData = new Uint8Array(NUM_TYPES * NUM_TYPES * stride);
             for (let a = 0; a < NUM_TYPES; a++) {
@@ -2048,7 +2082,7 @@ export default defineComponent({
                 entries: [
                     { binding: 0, resource: { buffer: particleBuffer! } },
                     { binding: 1, resource: { buffer: colorBuffer! } },
-                    { binding: 2, resource: { buffer: particleEnergyBuffer! } }
+                    { binding: 2, resource: { buffer: simMetricsBuffer! } }
                 ],
             })
             particleSortBindGroup = device.createBindGroup({
@@ -2067,7 +2101,7 @@ export default defineComponent({
                     { binding: 1, resource: { buffer: particleBuffer! } },
                     { binding: 2, resource: { buffer: binOffsetBuffer! } },
                     { binding: 3, resource: { buffer: interactionMatrixBuffer! } },
-                    { binding: 4, resource: { buffer: particleEnergyBuffer! } },
+                    { binding: 4, resource: { buffer: simMetricsBuffer! } },
                 ],
             })
             bruteForceBindGroup = device.createBindGroup({
@@ -2076,6 +2110,7 @@ export default defineComponent({
                     { binding: 0, resource: { buffer: particleTempBuffer! } },
                     { binding: 1, resource: { buffer: particleBuffer! } },
                     { binding: 2, resource: { buffer: interactionMatrixBuffer! } },
+                    { binding: 3, resource: { buffer: simMetricsBuffer! } },
                 ],
             })
             trackerComputeBindGroup = device.createBindGroup({
@@ -2179,7 +2214,7 @@ export default defineComponent({
                     { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // particleBuffer
                     { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // binOffsetBuffer
                     { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // interactionMatrixBuffer
-                    { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // particleEnergyBuffer
+                    { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // simMetricsBuffer
                 ],
             })
             bruteForceBindGroupLayout = device.createBindGroupLayout({
@@ -2187,6 +2222,7 @@ export default defineComponent({
                     { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // particleTempBuffer
                     { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // particleBuffer
                     { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }, // interactionMatrixBuffer
+                    { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // simMetricsBuffer
                 ],
             })
             simOptionsBindGroupLayout = device.createBindGroupLayout({
@@ -3037,6 +3073,7 @@ export default defineComponent({
             } finally {
                 isUpdatingParticles = false
                 isUpdateNumTypesPending = NEW_NUM_TYPES !== NUM_TYPES
+                maxEnergy = 1;
             }
         }
         const loadPreset = async (options: { presetRules?: number[][], presetMinRadius?: number[][], presetMaxRadius?: number[][], presetColors?: Float32Array }, presetTypeCount: number, matchPresetCount: boolean) => {
@@ -3098,6 +3135,7 @@ export default defineComponent({
             } finally {
                 isUpdatingParticles = false
                 success("Preset loaded.")
+                maxEnergy = 1;
             }
         }
         const applyPresetSubMatrix = (current: number[][], preset: number[][], numTypes: number, typesToUpdate: number,): number[][] => {
@@ -3382,6 +3420,7 @@ export default defineComponent({
         watch(() => particleLife.brushIntensity, (value: number) => brushIntensity = value)
         watch(() => particleLife.repulseForce, (value: number) => repulseForce = value)
         watch(() => particleLife.attractForce, (value: number) => attractForce = -value)
+        watch(() => particleLife.maxEnergy, (value: number) => maxEnergy = value)
         watch(() => particleLife.brushDirectionalForce, (value: number) => brushDirectionalForce = value)
         watch(() => particleLife.showBrushCircle, (value: boolean) => showBrushCircle = value)
         watch(() => particleLife.zoomSmoothing, (value: number) => zoomSmoothing = value)

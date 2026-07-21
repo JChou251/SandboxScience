@@ -29,6 +29,10 @@ struct Particle {
     vy : f32,
     particleType : f32,
 }
+struct SimMetrics {
+    max_energy: i32,
+    particlesEnergy: array<i32>,
+}
 
 fn get_interaction(index: u32, numTypes: u32) -> vec3<f32> {
     let word = interactions.data[index];
@@ -41,6 +45,7 @@ fn get_interaction(index: u32, numTypes: u32) -> vec3<f32> {
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> particlesDestination : array<Particle>;
 @group(0) @binding(2) var<storage, read> interactions: InteractionMatrix;
+@group(0) @binding(3) var<storage, read_write> metrics: SimMetrics;
 @group(1) @binding(0) var<uniform> options: SimOptions;
 @group(2) @binding(0) var<uniform> deltaTime: f32;
 
@@ -57,7 +62,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let typeA = u32(particle.particleType);
     var velocitySum = vec2<f32>(0.0, 0.0);
 
+    var max_e = metrics.particlesEnergy[0];
+
     for (var j = 0u; j < options.numParticles; j = j + 1u) {
+
+        if(metrics.particlesEnergy[j] > max_e){
+            max_e = metrics.particlesEnergy[j];
+        }
+
         if (i == j) { continue; }
 
         var other = particles[j];
@@ -99,4 +111,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     particle.vy += velocitySum.y * forceFactor;
 
     particlesDestination[i] = particle;
+
+    metrics.max_energy = max_e;
 };

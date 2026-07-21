@@ -27,8 +27,12 @@ struct Particle {
     vx : f32,
     vy : f32,
     particleType : f32,
-    //energystate : u32,
 }
+struct SimMetrics {
+    max_energy: i32,
+    particlesEnergy: array<i32>,
+}
+
 struct BinInfo {
     gridSize : vec2i,
     binId : vec2i,
@@ -66,7 +70,7 @@ fn get_interaction(index: u32) -> vec3<f32> {
 @group(0) @binding(1) var<storage, read_write> particlesDestination : array<Particle>;
 @group(0) @binding(2) var<storage, read> binOffset : array<u32>;
 @group(0) @binding(3) var<storage, read> interactions: InteractionMatrix;
-@group(0) @binding(4) var<storage, read_write> particlesEnergy: array<i32>;
+@group(0) @binding(4) var<storage, read_write> metrics: SimMetrics;
 
 @group(1) @binding(0) var<uniform> options : SimOptions;
 @group(2) @binding(0) var<uniform> deltaTime : f32;
@@ -172,7 +176,7 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 
     particlesDestination[id.x] = particle;
 
-    particlesEnergy[id.x] = totalEnergy;
+    metrics.particlesEnergy[id.x] = totalEnergy;
 }
 
 //@compute @workgroup_size(64)
