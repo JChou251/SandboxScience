@@ -103,8 +103,17 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     }
 
     var totalForce = vec2f(0.0, 0.0);
+    var totalEnergyNew = 0;
+
     let particlePosition = vec2f(particle.x, particle.y);
-    var totalEnergy = 0;
+    let particleEnergy = metrics.particlesEnergy[id.x];
+
+    let energy_coeff = f32(10);
+    // let energy_factor = energy_coeff/(1+exp(f32(particleEnergy)));
+    //let energy_factor = energy_coeff / (1 + exp(-f32(particleEnergy)));
+    //TODO: Make this paramaterizable?
+    let energy_factor = pow(f32(3/4*particleEnergy - 5),2) / (1 + exp(-f32(3/4*particleEnergy - 5)));
+    //let energy_factor = pow(f32(particleEnergy),2);
 
     for (var binX = binXMin; binX <= binXMax; binX += 1) {
         for (var binY = binYMin; binY <= binYMax; binY += 1) {
@@ -147,14 +156,13 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                     let minR = interaction.y;
                     var force : f32;
 
-                    totalEnergy++;
-
                     //TODO: Implement alternate toggleable calculation which calculates repel force proportional to the current energy state
                     if (dist < minR) {
+                        totalEnergyNew++;
 //                        force = (options.repel / minR) * dist - options.repel;
 //                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
 //                        force = (dist / minR - 1.0) * options.repel;
-                        force = fma(dist / minR, repelForce, -repelForce);
+                        force = fma(dist / minR, repelForce*(1+energy_factor), -repelForce*(1+energy_factor));
                     } else {
                         let rule = interaction.x;
                         let mid = (minR + maxR) * 0.5;
@@ -176,7 +184,8 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 
     particlesDestination[id.x] = particle;
 
-    metrics.particlesEnergy[id.x] = totalEnergy;
+    metrics.particlesEnergy[id.x] = totalEnergyNew;
+    metrics.max_energy = max(metrics.max_energy,totalEnergyNew);
 }
 
 //@compute @workgroup_size(64)

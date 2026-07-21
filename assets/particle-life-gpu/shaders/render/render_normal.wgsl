@@ -72,7 +72,7 @@ fn vertexMain(
 
     //TODO: Make this toggleable
     let color = colors[u32(particle.particleType)];
-    //let color = energyState_to_color(f32(energy), f32(metrics.max_energy));
+    //let color = energyState_to_color(f32(energy));
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
     let cameraCenter = vec2f(camera.centerX, camera.centerY);
@@ -89,19 +89,20 @@ fn vertexMain(
     );
 }
 
-fn energyState_to_color(energy:f32, max_energy:f32) -> vec4<f32>{
+fn energyState_to_color(energy:f32) -> vec4<f32>{
 
-    let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
-    //let adj_energy = energy;
+    //let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
+    let adj_energy = energy;
 
-	let heat_factor = adj_energy/max_energy; // compare all energy states to the current maximal state in the system
+	//let heat_factor = adj_energy/f32(metrics.max_energy) ; // compare all energy states to the current maximal state in the system
+    let heat_factor = adj_energy/f32(10) ;
 
-	let scaled_heat_factor = 1 / (1 + exp(-(heat_factor))); //sigmoid transform to regularize values
-    // let scaled_heat_factor = heat_factor;
+	//let scaled_heat_factor = 1 / (1 + exp(-heat_factor)); //sigmoid transform to regularize values
+    let scaled_heat_factor = heat_factor;
 
     //Project regularized values onto a gradient
     //Gradient: #00ffff - #ff6666
-    return vec4<f32>(f32(scaled_heat_factor * 255), f32(255 - scaled_heat_factor * 153), f32(255 - scaled_heat_factor * 153), 1.0);
+    return vec4<f32>(f32(scaled_heat_factor * 255), f32(255 - (scaled_heat_factor * 153)), f32(255 - (scaled_heat_factor * 153)), 1.0);
 
 }
 

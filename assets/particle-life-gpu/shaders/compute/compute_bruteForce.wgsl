@@ -62,13 +62,13 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let typeA = u32(particle.particleType);
     var velocitySum = vec2<f32>(0.0, 0.0);
 
-    var max_e = metrics.particlesEnergy[0];
+    // var max_e = metrics.particlesEnergy[0];
 
     for (var j = 0u; j < options.numParticles; j = j + 1u) {
 
-        if(metrics.particlesEnergy[j] > max_e){
-            max_e = metrics.particlesEnergy[j];
-        }
+        // if(metrics.particlesEnergy[j] > max_e){
+        //     max_e = metrics.particlesEnergy[j];
+        // }
 
         if (i == j) { continue; }
 
@@ -112,5 +112,5 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     particlesDestination[i] = particle;
 
-    metrics.max_energy = max_e;
+    //metrics.max_energy = max_e;
 };
