@@ -557,6 +557,8 @@ export default defineComponent({
         //Define properties for tracking simulation metrics
         let energyStates: Int32Array
         let maxEnergy: number = 1
+        let readMetricsSteps = 0
+        let readMetricsInterval = 50 //read metrics from GPU every ____ steps
 
         // Define variables for the simulation
         let repel: number = particleLife.repel // Repel force between particles
@@ -632,6 +634,7 @@ export default defineComponent({
         let hdrTextureView: GPUTextureView
 
         let renderPipeline: GPURenderPipeline
+        let renderPipelineHeatmap: GPURenderPipeline
         let renderGlowPipeline: GPURenderPipeline
         let renderCirclePipeline: GPURenderPipeline
         let renderMirrorPipeline: GPURenderPipeline
@@ -1261,6 +1264,11 @@ export default defineComponent({
 
         const resetExpt = async () => {
             
+            console.log(ctx.getConfiguration());
+
+            //reset steps tracker for reading metrics
+            readMetricsSteps = 0
+
             //reset all settings
             await regenerateLife()
 
@@ -1281,6 +1289,16 @@ export default defineComponent({
 
             //pause the simulation
             particleLife.isRunning = false
+        }
+
+        const readMetrics = async () => {
+            const arrayBuffer = await readBufferFromGPU(simMetricsBuffer!, (NUM_PARTICLES+1) * 4)
+            const simMetricsData = new Int32Array(arrayBuffer)
+
+            particleLife.energyStates = [...simMetricsData.slice(1)];
+            particleLife.maxEnergy = simMetricsData.slice(1).reduce((a, b) => Math.max(a, b), -Infinity);
+
+            console.log(simMetricsData)
         }
 
         const regenerateLife = async () => {
@@ -1344,6 +1362,7 @@ export default defineComponent({
             // device.queue.onSubmittedWorkDone().then(() => { --pendingFrames })
 
             animationFrameId = requestAnimationFrame(frame)
+
         }
         // -------------------------------------------------------------------------------------------------------------
         const DT_SMOOTHING_TAU: number = 1.0 // Smoothing time constant (s). Framerate-independent (1 - exp(-dt/tau)): same convergence time in wall-clock at any fps. Higher = steadier, lower = snappier.
@@ -1388,6 +1407,11 @@ export default defineComponent({
             if (isTrackerActive && isTrackerIndicatorVisible) renderTrackerIndicator(encoder)
 
             device.queue.submit([encoder.finish()])
+
+            if(readMetricsSteps%readMetricsInterval == 0){
+                readMetrics()
+            }
+            readMetricsSteps ++
         }
         // -------------------------------------------------------------------------------------------------------------
         const computeBruteForce = (encoder: GPUCommandEncoder) => {
@@ -1470,6 +1494,7 @@ export default defineComponent({
                 cameraChanged = false
             }
 
+            /**
             if (isParticleGlow) {
                 const hdrRenderPass = encoder.beginRenderPass({
                     colorAttachments: [{
@@ -1570,6 +1595,25 @@ export default defineComponent({
                 renderPass.draw(4, NUM_PARTICLES)
                 renderPass.end()
             }
+            */
+
+            const renderPass = encoder.beginRenderPass({
+                colorAttachments: [{
+                    view: ctx.getCurrentTexture().createView(),
+                    loadOp: 'clear',
+                    clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
+                    storeOp: 'store',
+                }],
+            })
+            renderPass.setPipeline(renderPipeline)
+            renderPass.setBindGroup(0, particleBufferReadOnlyBindGroup)
+            renderPass.setBindGroup(1, simOptionsBindGroup)
+            renderPass.setBindGroup(2, cameraBindGroup)
+            renderPass.setBindGroup(3, debugOptionsBindGroup)
+            renderPass.draw(4, NUM_PARTICLES)
+            renderPass.end()
+            
+            
         }
         // -------------------------------------------------------------------------------------------------------------
         const renderBrushCircle = (encoder: GPUCommandEncoder) => {
@@ -1721,9 +1765,17 @@ export default defineComponent({
                 device.queue.writeBuffer(colorBuffer!, 0, paddedColors)
             }
         }
+        const updateSimMetricsBuffer = () => {
+
+            const myValue = new Uint32Array((NUM_PARTICLES+1) * 4);
+            myValue[0] = maxEnergy;
+            myValue.set(energyStates,1)
+            device.queue.writeBuffer(simMetricsBuffer!, 0, myValue);
+        }
+
         const updateParticleBuffers = (hasInitialParticles: boolean = false) => {
 
-            const simMetricsData = new ArrayBuffer(80)
+            const simMetricsData = new ArrayBuffer((NUM_PARTICLES+1) * 4)
             const simMetricsView = new DataView(simMetricsData)
             simMetricsView.setInt32(0, maxEnergy, true)
 
@@ -1747,7 +1799,7 @@ export default defineComponent({
             })
             simMetricsBuffer = device.createBuffer({
                 size: particleBuffer.size,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
             })
 
             if (!simMetricsBuffer) {
@@ -2546,10 +2598,23 @@ export default defineComponent({
                 vertex: { module: renderShader, entryPoint: 'vertexMain' },
                 fragment: { module: renderShader, entryPoint: 'fragmentMain', targets: [{
                     format: navigator.gpu.getPreferredCanvasFormat(),
+                    //format: 'rgba16float',
                     blend: particleNormalBlending
                 }] },
                 primitive: { topology: 'triangle-strip' }
             })
+            renderPipelineHeatmap = device.createRenderPipeline({
+                layout: device.createPipelineLayout({
+                    bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout, debugOptionsBindGroupLayout],
+                }),
+                vertex: { module: renderShader, entryPoint: 'vertexMain' },
+                fragment: { module: renderShader, entryPoint: 'fragmentMain', targets: [{
+                    format: 'rgba16float',
+                    blend: particleNormalBlending
+                }] },
+                primitive: { topology: 'triangle-strip' }
+            })
+
             renderPipelineAdditive = device.createRenderPipeline({
                 layout: device.createPipelineLayout({
                     bindGroupLayouts: [particleBufferReadOnlyBindGroupLayout, simOptionsBindGroupLayout, cameraBindGroupLayout,debugOptionsBindGroupLayout],
@@ -3478,7 +3543,8 @@ export default defineComponent({
         watch(() => particleLife.brushIntensity, (value: number) => brushIntensity = value)
         watch(() => particleLife.repulseForce, (value: number) => repulseForce = value)
         watch(() => particleLife.attractForce, (value: number) => attractForce = -value)
-        watch(() => particleLife.maxEnergy, (value: number) => maxEnergy = value)
+        watch(() => particleLife.energyStates, (value: number[]) => {energyStates = new Int32Array(value)})
+        watch(() => particleLife.maxEnergy, (value: number) => {maxEnergy = value; updateSimMetricsBuffer();})
         watch(() => particleLife.brushDirectionalForce, (value: number) => brushDirectionalForce = value)
         watch(() => particleLife.showBrushCircle, (value: boolean) => showBrushCircle = value)
         watch(() => particleLife.zoomSmoothing, (value: number) => zoomSmoothing = value)

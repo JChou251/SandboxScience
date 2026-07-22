@@ -108,12 +108,32 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     let particlePosition = vec2f(particle.x, particle.y);
     let particleEnergy = metrics.particlesEnergy[id.x];
 
-    let energy_coeff = f32(10);
+    //let energy_coeff = f32(10);
     // let energy_factor = energy_coeff/(1+exp(f32(particleEnergy)));
     //let energy_factor = energy_coeff / (1 + exp(-f32(particleEnergy)));
-    //TODO: Make this paramaterizable?
-    let energy_factor = pow(f32(3/4*particleEnergy - 5),2) / (1 + exp(-f32(3/4*particleEnergy - 5)));
     //let energy_factor = pow(f32(particleEnergy),2);
+
+    //TODO: Make this paramaterizable?
+
+    //SETTING A
+    let a = f32(3/4);
+    let b = f32(-5);
+    let c = f32(1);
+    let interactModifier = 1 + ( c*pow(f32(a*f32(particleEnergy) + b),2) / (1 + exp(-f32(a*f32(particleEnergy) + b))) );
+    let h = f32(1);
+    let i = f32(-1);
+    let j = f32(10);
+    let repelModifier = 1 + ( h*pow(f32(i*f32(particleEnergy) + j),2) / (1 + exp(-f32(i*f32(particleEnergy) + j))) );
+
+    //SETTING B
+    // let a = f32(-0.02);
+    // let b = f32(4);
+    // let c = f32(40);
+    // let interactModifier = 1 - ( c / (1 + exp(f32(a*f32(particleEnergy) + b))) );
+    // let h = f32(6.6);
+    // let i = f32(-0.01);
+    // let j = f32(3);
+    // let repelModifier = 1 - ( h*f32(i*f32(particleEnergy) + j) / (1 + exp(f32(i*f32(particleEnergy) + j))) );
 
     for (var binX = binXMin; binX <= binXMax; binX += 1) {
         for (var binY = binYMin; binY <= binYMax; binY += 1) {
@@ -162,12 +182,12 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 //                        force = (options.repel / minR) * dist - options.repel;
 //                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
 //                        force = (dist / minR - 1.0) * options.repel;
-                        force = fma(dist / minR, repelForce*(1-energy_factor), -repelForce*(1-energy_factor));
+                        force = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
                     } else {
                         let rule = interaction.x;
                         let mid = (minR + maxR) * 0.5;
                         let slope = rule / (mid - minR);
-                        force = fma(-slope, abs(dist - mid), rule*(1+energy_factor));
+                        force = fma(-slope, abs(dist - mid), rule*interactModifier);
                     }
 
                     let scaledForce = force * invDist;
@@ -185,7 +205,6 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     particlesDestination[id.x] = particle;
 
     metrics.particlesEnergy[id.x] = totalEnergyNew;
-    metrics.max_energy = max(metrics.max_energy,totalEnergyNew);
 }
 
 //@compute @workgroup_size(64)

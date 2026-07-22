@@ -102,20 +102,34 @@ fn vertexMain(
 fn energyState_to_color(energy:f32) -> vec4<f32>{
 
     //let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
-    let adj_energy = energy;
+    //let adj_energy = energy;
 
 	//let heat_factor = adj_energy/f32(metrics.max_energy) ; // compare all energy states to the current maximal state in the system
-    // let heat_factor = adj_energy/f32(10) ;
-    let heat_factor = f32(adj_energy/debugOptions.maxParticleCount);
+    //let heat_factor = adj_energy/f32(10) ;
+    //let heat_factor = f32(adj_energy/debugOptions.maxParticleCount);
 
 	//let scaled_heat_factor = 1 / (1 + exp(heat_factor)); //sigmoid transform to regularize values
     //let scaled_heat_factor = heat_factor;
-    let scaled_heat_factor = pow(heat_factor,2); //transform so that extreme values are more visible
+    //let scaled_heat_factor = pow(heat_factor,2); //transform so that extreme values are more visible
 
     //Project regularized values onto a gradient
     //Gradient: #00ffff - #ff6666
-    return vec4<f32>(f32(scaled_heat_factor * 255f), f32(255f - (scaled_heat_factor * 153f)), f32(255f - (scaled_heat_factor * 153f)), 1.0);
+    //return vec4<f32>(f32(scaled_heat_factor * 255f), f32(255f - (scaled_heat_factor * 153f)), f32(255f - (scaled_heat_factor * 153f)), 1.0);
 
+    //TODO: Make these two bounds paramaterizable
+    let bound_upper = 0.75;
+    let bound_lower = 0.25;
+
+    let heat_factor = energy/f32(metrics.max_energy) ;
+    if(heat_factor >= bound_upper){
+        return vec4<f32>(f32(255), f32(0), f32(0), 1.0);
+    }
+    else if(heat_factor <= bound_lower){
+        return vec4<f32>(f32(0), f32(255), f32(255), 1.0);
+    }
+    else{
+        return vec4<f32>(f32(128), f32(128), f32(128), 1.0);
+    }
 }
 
 @fragment

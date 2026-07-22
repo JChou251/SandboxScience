@@ -9,7 +9,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
 
     const isRunning = ref<boolean>(true) // Is the simulation running
 
-    const energyStates = ref<Int32Array>() // Current energy states for the particles
+    const energyStates = ref<number[]>([]) // Current energy states for the particles
     const maxEnergy = ref<number>(0)
 
     const currentColors = ref<Float32Array>() // Current colors for the particles
