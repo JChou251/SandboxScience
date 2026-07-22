@@ -282,7 +282,9 @@
                                                  { id: 'heatmap', name: 'Heatmap', icon: 'i-tabler-flame', category: 'Display Mode' }
                                              ]">
                                     </SelectInput> -->
-                                    <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" @update:model-value="particleLife.isDebugHeatmapActive = $event" />
+                                    <ToggleSwitch label="Heatmap View" colorful-label 
+                                        v-model="particleLife.isDebugHeatmapActive" 
+                                        @update:model-value="particleLife.isDebugHeatmapActive = $event" />
                                     <!-- <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" /> -->
                                 </div>
                                 <RangeInput v-show="particleLife.isDebugHeatmapActive" input label="Heatmap Scale"
@@ -315,6 +317,30 @@
                 </div>
             </template>
             <template #bottom-actions>
+                <button type="button" name="Randomize" aria-label="Randomize" title="Randomize simulation"
+                        btn rounded-full flex items-center justify-center p-2 pointer-events-auto
+                        class="backdrop-blur-sm bg-[#094F5D]/90 hover:bg-[#0B5F6F]/90"
+                        @click="resetExpt">
+                    <span i-game-icons-perspective-dice-six-faces-random text-2xl></span>
+                </button>
+                <button type="button" name="Randomize" aria-label="Randomize" title="Randomize simulation"
+                        btn rounded-full flex items-center justify-center p-2 pointer-events-auto
+                        class="backdrop-blur-sm bg-[#094F5D]/90 hover:bg-[#0B5F6F]/90"
+                        @click="regenerateLife" :disabled="particleLife.isHudLocked">
+                    <span text-2xl>1</span>
+                </button>
+                <button type="button" name="Randomize" aria-label="Randomize" title="Randomize simulation"
+                        btn rounded-full flex items-center justify-center p-2 pointer-events-auto
+                        class="backdrop-blur-sm bg-[#094F5D]/90 hover:bg-[#0B5F6F]/90"
+                        @click="regenerateLife" :disabled="particleLife.isHudLocked">
+                    <span text-2xl>2</span>
+                </button>
+                <button type="button" name="Randomize" aria-label="Randomize" title="Randomize simulation"
+                        btn rounded-full flex items-center justify-center p-2 pointer-events-auto
+                        class="backdrop-blur-sm bg-[#094F5D]/90 hover:bg-[#0B5F6F]/90"
+                        @click="regenerateLife" :disabled="particleLife.isHudLocked">
+                    <span text-2xl>3</span>
+                </button>
                 <button type="button" name="Cinematic Camera" aria-label="Cinematic Camera" title="Cinematic Camera"
                         btn rounded-full flex items-center justify-center p-2 backdrop-blur-sm pointer-events-auto
                         :class="particleLife.isDriftCamActive ? 'bg-violet-600/90 hover:bg-violet-500/90' : 'bg-violet-900/80 hover:bg-violet-800/80'"
@@ -708,6 +734,8 @@ export default defineComponent({
             handleResize()
             setSimSizeBasedOnScreen()
             await initLife()
+
+            particleLife.isDebugHeatmapActive = false
 
             useEventListener('resize', handleResize)
             useEventListener(canvasRef.value, ['mousedown'], (e) => {
@@ -1230,7 +1258,33 @@ export default defineComponent({
             lastFrameTime = performance.now()
             animationFrameId = requestAnimationFrame(frame)
         }
+
+        const resetExpt = async () => {
+            
+            //reset all settings
+            await regenerateLife()
+
+            //symmetrize matrix
+            setRulesMatrix(generateRules(1, NUM_TYPES))
+
+            //set system boundary behaviors (Setting: Wrap, Mode: Normal)
+            isWallWrap = true
+            isMirrorWrap = false
+            isInfiniteMirrorWrap = false
+
+            //set system boundary dimensions
+            SIM_WIDTH = 2000
+            SIM_HEIGHT = 1000
+
+            //set max force factor
+            particleLife.forceFactor = 2.0
+
+            //pause the simulation
+            particleLife.isRunning = false
+        }
+
         const regenerateLife = async () => {
+
             if (isTrackerActive) await stopTracker()
             cancelAnimationLoop()
             destroyPipelinesAndBindGroups()
@@ -3497,7 +3551,7 @@ export default defineComponent({
         watch(() => particleLife.isDebugHeatmapActive, (value: boolean) => {
             isDebugHeatmapActive = value
             updateDebugOptionsBuffer()
-            particleLife.isDebugBinsActive = true
+            //particleLife.isDebugBinsActive = true
         })
         watch(() => particleLife.debugMaxParticleCount, (value: number) => { debugMaxParticleCount = value; updateDebugOptionsBuffer(); })
         watch(() => particleLife.cellSubdivisions, (value: number) => {
@@ -3712,7 +3766,7 @@ export default defineComponent({
 
             return {
                 particleLife, canvasRef, fps, executionTime, displayedDeltaTime, showLiveDeltaTime, colorRgbStrings,
-                handleZoom, toggleFullscreen, isFullscreen, smoothCenterView, regenerateLife, step, randomizeRadius, randomizeRulesAndRadius,
+                handleZoom, toggleFullscreen, isFullscreen, smoothCenterView, resetExpt, regenerateLife, step, randomizeRadius, randomizeRulesAndRadius,
                 updateSimWidth, updateSimHeight, updateNumParticles, setNewNumParticles, setNewNumTypes,
                 updateRulesMatrixValue, updateMinMatrixValue, updateMaxMatrixValue, newRandomRulesMatrix,
                 updateRulesMatrix, updateParticlePositions, updateColors, loadPreset, updateSingleColor,
