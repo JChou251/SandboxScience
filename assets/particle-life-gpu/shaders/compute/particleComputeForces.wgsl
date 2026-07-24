@@ -191,6 +191,7 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                     //let force = force_calc_energy_linear(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
                     //let force = force_calc_energy_sigmoid(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
                     let force = force_calc_energy_linear_sigmoid(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
+                    //let force = force_calc_energy_linear_sigmoid_nlog(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
 
                     if (dist < minR) {
                         totalEnergyNew++;
@@ -355,6 +356,47 @@ fn force_calc_energy_linear_sigmoid(dist : f32, interaction : vec3<f32>, repelFo
     }
     else{
         repelModifier = ((energy_state-a-b)/pow(a,2))+a+c;
+    }
+
+    if (dist < minR) {
+        let repelFactor = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
+        force = repelFactor;
+    } else {
+
+        let repelFactor = repelForce*repelModifier;
+
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule);
+    }
+
+    return force;
+}
+
+fn force_calc_energy_linear_sigmoid_nlog(dist : f32, interaction : vec3<f32>, repelForce : f32, energy_state: f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    let a = 7f;
+    let b = 350f;
+    let c = 1f;
+
+    let lower = b-a;
+    let upper = b+a;
+
+    var repelModifier = 1f;
+
+    if(energy_state > lower && energy_state < upper ){
+        repelModifier = 1f + ( a/(1f + exp(b-energy_state)) );
+    }
+    else if (energy_state < upper){
+        repelModifier = ( energy_state/lower);
+    }
+    else{
+        repelModifier = ((energy_state-b)*log(energy_state-b)/4f) + (6f*c);
     }
 
     if (dist < minR) {
