@@ -154,6 +154,8 @@
                                         tooltip="Subdivides the interaction radius into smaller grid cells. <br> Default: 2 (fastest in most cases). <br> Increasing subdivisions can improve performance for simulations with very large radii."
                                         :min="1" :max="5" :step="1" v-model="particleLife.cellSubdivisions">
                             </RangeInput>
+                            <MassPotentialChart :store="particleLife">
+                            </MassPotentialChart>
                         </Collapse>
                         <Collapse label="Presets" icon="i-tabler-sparkles text-amber-500"
                                   tooltip="Choose predefined configurations to quickly set up your simulation.">
@@ -451,10 +453,11 @@ import renderBinsShaderCode from 'assets/particle-life-gpu/shaders/render/render
 import renderTrackerShaderCode from 'assets/particle-life-gpu/shaders/render/render_tracker.wgsl?raw';
 import trackerComputeShaderCode from 'assets/particle-life-gpu/shaders/compute/trackerCompute.wgsl?raw';
 import trackerCameraUpdateShaderCode from 'assets/particle-life-gpu/shaders/compute/trackerCameraUpdate.wgsl?raw';
+import MassPotentialChart from '~/components/particle-life/MassPotentialChart.vue';
 
 export default defineComponent({
     name: 'ParticleLifeGpu',
-    components: { PresetPanel, SaveModal, BrushSettings, MatrixSettings, WrapModeSelection, TrackerOverlay, TrackerToggle, CenterViewButton, RadiusVisualizer },
+    components: { PresetPanel, SaveModal, BrushSettings, MatrixSettings, MassPotentialChart, WrapModeSelection, TrackerOverlay, TrackerToggle, CenterViewButton, RadiusVisualizer },
     emits: ['switch-renderer'],
     setup(props, { emit }) {
         // Define refs and variables
