@@ -24,38 +24,7 @@
                     </div>
                     <hr border-slate-500>
                     <div overflow-auto flex-1 flex flex-col gap-2 mt-2 pb-12 class="scrollableArea">
-                        <Collapse label="Presets" icon="i-tabler-sparkles text-amber-500"
-                                  tooltip="Choose predefined configurations to quickly set up your simulation.">
-                            <PresetPanel :store="particleLife"
-                                         @updateColors="updateColors"
-                                         @updateRulesMatrix="updateRulesMatrix"
-                                         @updateParticlePositions="updateParticlePositions"
-                                         @loadPreset="loadPreset">
-                            </PresetPanel>
-                        </Collapse>
-                        <Collapse label="Matrix Settings" icon="i-tabler-grid-4x4 text-indigo-500"
-                                  tooltip="Modify matrix values by clicking on cells in the grid. <br>
-                                  Adjust individual cell values with the slider, or click and drag to change them directly. <br>
-                                  Use Ctrl + Click to select multiple cells for group adjustments. <br>
-                                  If no cells are selected, the slider will adjust all values.">
-                            <MatrixSettings :store="particleLife"
-                                            @updateRulesMatrix="updateRulesMatrixValue"
-                                            @randomRulesMatrix="newRandomRulesMatrix"
-                                            @updateMinMatrix="updateMinMatrixValue"
-                                            @updateMaxMatrix="updateMaxMatrixValue"
-                                            @updateColor="updateSingleColor">
-                            </MatrixSettings>
-                        </Collapse>
-                        <Collapse label="Randomizer Settings" icon="i-game-icons-perspective-dice-six-faces-random text-teal-500"
-                                  tooltip="Adjust the parameters for randomizing particle attributes. <br> Configure the ranges for minimum and maximum interaction radii.">
-                            <RadiusVisualizer v-model:min-radius-range="particleLife.minRadiusRange"
-                                              v-model:max-radius-range="particleLife.maxRadiusRange"
-                                              @randomize-radius="randomizeRadius"
-                                              @randomize-rules-and-radius="randomizeRulesAndRadius"
-                                              @randomize-all="regenerateLife">
-                            </RadiusVisualizer>
-                        </Collapse>
-                        <Collapse label="World Settings" icon="i-tabler-world-cog text-cyan-500" opened>
+                        <Collapse label="World Settings" icon="i-tabler-world-cog text-cyan-500">
                             <RangeInput input label="Particle Count"
                                         tooltip="Adjust the total number of particles. <br> More particles may reveal complex interactions but can increase computational demand."
                                         :min="16" :max="1048576" :step="16" v-model="particleLife.numParticles" @update:modelValue="setNewNumParticles">
@@ -143,6 +112,79 @@
                                         tooltip="Manually set the simulation time step (Δt), shown as a frame fraction (1/x). <br> <b>Higher Δt</b> → faster but particles overshoot <br> <b>Lower Δt</b> → slower but more stable. <br> <i>Disable to keep the automatic, framerate-independent Δt.</i>"
                                         :min="0.0041" :max="0.05" :step="0.0001" v-model="particleLife.manualDeltaTime" mt-2>
                             </RangeInput>
+                        </Collapse>
+                        <Collapse label="Debug Tools" icon="i-tabler-bug text-rose-500"
+                                  tooltip="Provides tools for visualizing the simulation's internal state. <br> Toggle the grid view to see spatial bins or activate a heatmap to analyze particle density. <br> These features are useful for debugging and performance tuning."
+                                  opened >
+                            <div v-show="particleLife.useSpatialHash">
+                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Maximal Energy State :</p>
+
+                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Spatial Bins Overlay :</p>
+                                <div flex items-center gap-2>
+                                    <!-- <SelectInput name="debug-bins-mode"
+                                                 :model-value="particleLife.isDebugHeatmapActive ? 'heatmap' : 'grid'"
+                                                 @update:model-value="particleLife.isDebugHeatmapActive = $event === 'heatmap'"
+                                                 :options="[
+                                                 { id: 'grid', name: 'Grid', icon: 'i-tabler-grid-dots', category: 'Display Mode' },
+                                                 { id: 'heatmap', name: 'Heatmap', icon: 'i-tabler-flame', category: 'Display Mode' }
+                                             ]">
+                                    </SelectInput> -->
+                                    <ToggleSwitch label="Heatmap View" colorful-label 
+                                        v-model="particleLife.isDebugHeatmapActive" 
+                                        @update:model-value="particleLife.isDebugHeatmapActive = $event" />
+                                    <!-- <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" /> -->
+                                </div>
+                                <RangeInput v-show="particleLife.isDebugHeatmapActive" input label="Heatmap Scale"
+                                            tooltip="Sets the number of particles in a cell that maps to the highest value on the heatmap gradient. <br> Adjusting this value scales the density visualization, helping to fine-tune how particle concentrations are displayed."
+                                            :min="1" :max="500" :step="1" v-model="particleLife.debugMaxParticleCount" mt-2>
+                                </RangeInput>
+                                <hr border-gray-500 my-2>
+                            </div>
+
+                            <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Neighbor Search :</p>
+                            <SelectInput name="algorithm-mode"
+                                         :model-value="particleLife.useSpatialHash ? 'spatial' : 'brute'"
+                                         @update:model-value="particleLife.useSpatialHash = $event === 'spatial'"
+                                         :options="[
+                                             { id: 'spatial', name: 'Spatial Hash', icon: 'i-tabler-topology-ring-3', category: 'Method' },
+                                             { id: 'brute', name: 'Brute Force', icon: 'i-tabler-cpu', category: 'Method' },
+                                         ]">
+                            </SelectInput>
+                            <RangeInput v-show="particleLife.useSpatialHash" input label="Cell Subdivisions" mt-2
+                                        tooltip="Subdivides the interaction radius into smaller grid cells. <br> Default: 2 (fastest in most cases). <br> Increasing subdivisions can improve performance for simulations with very large radii."
+                                        :min="1" :max="5" :step="1" v-model="particleLife.cellSubdivisions">
+                            </RangeInput>
+                        </Collapse>
+                        <Collapse label="Presets" icon="i-tabler-sparkles text-amber-500"
+                                  tooltip="Choose predefined configurations to quickly set up your simulation.">
+                            <PresetPanel :store="particleLife"
+                                         @updateColors="updateColors"
+                                         @updateRulesMatrix="updateRulesMatrix"
+                                         @updateParticlePositions="updateParticlePositions"
+                                         @loadPreset="loadPreset">
+                            </PresetPanel>
+                        </Collapse>
+                        <Collapse label="Matrix Settings" icon="i-tabler-grid-4x4 text-indigo-500"
+                                  tooltip="Modify matrix values by clicking on cells in the grid. <br>
+                                  Adjust individual cell values with the slider, or click and drag to change them directly. <br>
+                                  Use Ctrl + Click to select multiple cells for group adjustments. <br>
+                                  If no cells are selected, the slider will adjust all values.">
+                            <MatrixSettings :store="particleLife"
+                                            @updateRulesMatrix="updateRulesMatrixValue"
+                                            @randomRulesMatrix="newRandomRulesMatrix"
+                                            @updateMinMatrix="updateMinMatrixValue"
+                                            @updateMaxMatrix="updateMaxMatrixValue"
+                                            @updateColor="updateSingleColor">
+                            </MatrixSettings>
+                        </Collapse>
+                        <Collapse label="Randomizer Settings" icon="i-game-icons-perspective-dice-six-faces-random text-teal-500"
+                                  tooltip="Adjust the parameters for randomizing particle attributes. <br> Configure the ranges for minimum and maximum interaction radii.">
+                            <RadiusVisualizer v-model:min-radius-range="particleLife.minRadiusRange"
+                                              v-model:max-radius-range="particleLife.maxRadiusRange"
+                                              @randomize-radius="randomizeRadius"
+                                              @randomize-rules-and-radius="randomizeRulesAndRadius"
+                                              @randomize-all="regenerateLife">
+                            </RadiusVisualizer>
                         </Collapse>
                         <Collapse label="Graphics Settings" icon="i-tabler-photo-cog text-emerald-500">
                             <RangeInput input label="Particle Size"
@@ -266,47 +308,6 @@
                                             :min="0.01" :max="1" :step="0.01" v-model="particleLife.trackerCameraSmoothing">
                                 </RangeInput>
                             </div>
-                        </Collapse>
-                        <Collapse label="Debug Tools" icon="i-tabler-bug text-rose-500"
-                                  tooltip="Provides tools for visualizing the simulation's internal state. <br> Toggle the grid view to see spatial bins or activate a heatmap to analyze particle density. <br> These features are useful for debugging and performance tuning.">
-                            <div v-show="particleLife.useSpatialHash">
-                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Maximal Energy State :</p>
-
-                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Spatial Bins Overlay :</p>
-                                <div flex items-center gap-2>
-                                    <!-- <SelectInput name="debug-bins-mode"
-                                                 :model-value="particleLife.isDebugHeatmapActive ? 'heatmap' : 'grid'"
-                                                 @update:model-value="particleLife.isDebugHeatmapActive = $event === 'heatmap'"
-                                                 :options="[
-                                                 { id: 'grid', name: 'Grid', icon: 'i-tabler-grid-dots', category: 'Display Mode' },
-                                                 { id: 'heatmap', name: 'Heatmap', icon: 'i-tabler-flame', category: 'Display Mode' }
-                                             ]">
-                                    </SelectInput> -->
-                                    <ToggleSwitch label="Heatmap View" colorful-label 
-                                        v-model="particleLife.isDebugHeatmapActive" 
-                                        @update:model-value="particleLife.isDebugHeatmapActive = $event" />
-                                    <!-- <ToggleSwitch label="Heatmap View" colorful-label v-model="particleLife.isDebugBinsActive" /> -->
-                                </div>
-                                <RangeInput v-show="particleLife.isDebugHeatmapActive" input label="Heatmap Scale"
-                                            tooltip="Sets the number of particles in a cell that maps to the highest value on the heatmap gradient. <br> Adjusting this value scales the density visualization, helping to fine-tune how particle concentrations are displayed."
-                                            :min="1" :max="500" :step="1" v-model="particleLife.debugMaxParticleCount" mt-2>
-                                </RangeInput>
-                                <hr border-gray-500 my-2>
-                            </div>
-
-                            <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Neighbor Search :</p>
-                            <SelectInput name="algorithm-mode"
-                                         :model-value="particleLife.useSpatialHash ? 'spatial' : 'brute'"
-                                         @update:model-value="particleLife.useSpatialHash = $event === 'spatial'"
-                                         :options="[
-                                             { id: 'spatial', name: 'Spatial Hash', icon: 'i-tabler-topology-ring-3', category: 'Method' },
-                                             { id: 'brute', name: 'Brute Force', icon: 'i-tabler-cpu', category: 'Method' },
-                                         ]">
-                            </SelectInput>
-                            <RangeInput v-show="particleLife.useSpatialHash" input label="Cell Subdivisions" mt-2
-                                        tooltip="Subdivides the interaction radius into smaller grid cells. <br> Default: 2 (fastest in most cases). <br> Increasing subdivisions can improve performance for simulations with very large radii."
-                                        :min="1" :max="5" :step="1" v-model="particleLife.cellSubdivisions">
-                            </RangeInput>
                         </Collapse>
                     </div>
                     <div absolute bottom-2 right-0 z-100 class="-mr-px">
