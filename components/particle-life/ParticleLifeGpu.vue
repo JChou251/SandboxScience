@@ -434,8 +434,6 @@ import particleAdvanceShaderCode from 'assets/particle-life-gpu/shaders/compute/
 import particleAdvanceBrushShaderCode from 'assets/particle-life-gpu/shaders/compute/particleAdvance_brush.wgsl?raw';
 
 import renderShaderCode from 'assets/particle-life-gpu/shaders/render/render_normal.wgsl?raw';
-// import renderShaderCode from 'assets/particle-life-gpu/shaders/render/render_test.wgsl?raw';
-//import energyStateShaderCode from 'assets/particle-life-gpu/shaders/render/render_energy_state.wgsl?raw';
 import offscreenShaderCode from 'assets/particle-life-gpu/shaders/render/offscreen_render_vertex.wgsl?raw';
 import infiniteCompositorShaderCode from 'assets/particle-life-gpu/shaders/compose/infinite_compositor.wgsl?raw';
 import renderGlowShaderCode from 'assets/particle-life-gpu/shaders/render/particle_render_glow.wgsl?raw';
@@ -555,8 +553,8 @@ export default defineComponent({
         let driftCamPhase = { x1: 0, x2: 0, y1: 0, y2: 0, z1: 0, z2: 0 } // Phase offsets for the sine waves controlling camera movement and zoom
 
         //Define properties for tracking simulation metrics
-        let energyStates: Int32Array
-        let maxEnergy: number = 1
+        let massPotentials: Int32Array
+        let maxMassPotential: number = 1
         let readMetricsSteps = 0
         let readMetricsInterval = 50 //read metrics from GPU every ____ steps
 
@@ -1241,7 +1239,7 @@ export default defineComponent({
             // particleLife.currentMaxRadius = 80
 
             //reset metrics
-            maxEnergy = 1;
+            maxMassPotential = 1;
 
             console.log("Rules Matrix:", rulesMatrix);
             console.log("Min Radius Matrix:", minRadiusMatrix);
@@ -1295,8 +1293,8 @@ export default defineComponent({
             const arrayBuffer = await readBufferFromGPU(simMetricsBuffer!, (NUM_PARTICLES+1) * 4)
             const simMetricsData = new Int32Array(arrayBuffer)
 
-            particleLife.energyStates = [...simMetricsData.slice(1)];
-            particleLife.maxEnergy = simMetricsData.slice(1).reduce((a, b) => Math.max(a, b), -Infinity);
+            particleLife.massPotentials = [...simMetricsData.slice(1)];
+            particleLife.maxMassPotential = simMetricsData.slice(1).reduce((a, b) => Math.max(a, b), -Infinity);
 
             console.log(simMetricsData)
         }
@@ -1768,8 +1766,8 @@ export default defineComponent({
         const updateSimMetricsBuffer = () => {
 
             const myValue = new Uint32Array((NUM_PARTICLES+1) * 4);
-            myValue[0] = maxEnergy;
-            myValue.set(energyStates,1)
+            myValue[0] = maxMassPotential;
+            myValue.set(massPotentials,1)
             device.queue.writeBuffer(simMetricsBuffer!, 0, myValue);
         }
 
@@ -1777,7 +1775,7 @@ export default defineComponent({
 
             const simMetricsData = new ArrayBuffer((NUM_PARTICLES+1) * 4)
             const simMetricsView = new DataView(simMetricsData)
-            simMetricsView.setInt32(0, maxEnergy, true)
+            simMetricsView.setInt32(0, maxMassPotential, true)
 
             if (simMetricsBuffer) simMetricsBuffer?.destroy(); simMetricsBuffer = undefined;
 
@@ -2028,7 +2026,7 @@ export default defineComponent({
         }
         const updateInteractionMatrixBuffer = () => {
 
-            maxEnergy = 1;
+            maxMassPotential = 1;
 
             const stride = 4; // 4 octets par couple
             const interactionData = new Uint8Array(NUM_TYPES * NUM_TYPES * stride);
@@ -3196,7 +3194,7 @@ export default defineComponent({
             } finally {
                 isUpdatingParticles = false
                 isUpdateNumTypesPending = NEW_NUM_TYPES !== NUM_TYPES
-                maxEnergy = 1;
+                maxMassPotential = 1;
             }
         }
         const loadPreset = async (options: { presetRules?: number[][], presetMinRadius?: number[][], presetMaxRadius?: number[][], presetColors?: Float32Array }, presetTypeCount: number, matchPresetCount: boolean) => {
@@ -3258,7 +3256,7 @@ export default defineComponent({
             } finally {
                 isUpdatingParticles = false
                 success("Preset loaded.")
-                maxEnergy = 1;
+                maxMassPotential = 1;
             }
         }
         const applyPresetSubMatrix = (current: number[][], preset: number[][], numTypes: number, typesToUpdate: number,): number[][] => {
@@ -3543,8 +3541,8 @@ export default defineComponent({
         watch(() => particleLife.brushIntensity, (value: number) => brushIntensity = value)
         watch(() => particleLife.repulseForce, (value: number) => repulseForce = value)
         watch(() => particleLife.attractForce, (value: number) => attractForce = -value)
-        watch(() => particleLife.energyStates, (value: number[]) => {energyStates = new Int32Array(value)})
-        watch(() => particleLife.maxEnergy, (value: number) => {maxEnergy = value; updateSimMetricsBuffer();})
+        watch(() => particleLife.massPotentials, (value: number[]) => {massPotentials = new Int32Array(value)})
+        watch(() => particleLife.maxMassPotential, (value: number) => {maxMassPotential = value; updateSimMetricsBuffer();})
         watch(() => particleLife.brushDirectionalForce, (value: number) => brushDirectionalForce = value)
         watch(() => particleLife.showBrushCircle, (value: boolean) => showBrushCircle = value)
         watch(() => particleLife.zoomSmoothing, (value: number) => zoomSmoothing = value)

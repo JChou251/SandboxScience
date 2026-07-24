@@ -135,6 +135,16 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     // let j = f32(3);
     // let repelModifier = 1 - ( h*f32(i*f32(particleEnergy) + j) / (1 + exp(f32(i*f32(particleEnergy) + j))) );
 
+    //SETTING C
+    // let a = f32(-1);
+    // let b = f32(20);
+    // let c = f32(40);
+    // let interactModifier = 1 - ( c / (1 + exp(f32(a*f32(particleEnergy) + b))) );
+    // let h = f32(1);
+    // let i = f32(-0.1);
+    // let j = f32(10);
+    // let repelModifier = 1 - ( h*f32(i*f32(particleEnergy) + j) / (1 + exp(f32(i*f32(particleEnergy) + j))) );
+
     for (var binX = binXMin; binX <= binXMax; binX += 1) {
         for (var binY = binYMin; binY <= binYMax; binY += 1) {
             var realBinX = binX;

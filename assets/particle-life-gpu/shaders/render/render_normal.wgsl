@@ -79,10 +79,10 @@ fn vertexMain(
     //TODO: Make this toggleable
     let color = select(
         colors[u32(particle.particleType)],
-        energyState_to_color(f32(energy)),
+        massPotential_to_color(f32(energy)),
         debugOptions.isHeatmapActive == 1u
     );
-    //let color = energyState_to_color(f32(energy));
+    //let color = massPotential_to_color(f32(energy));
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
     let cameraCenter = vec2f(camera.centerX, camera.centerY);
@@ -99,7 +99,7 @@ fn vertexMain(
     );
 }
 
-fn energyState_to_color(energy:f32) -> vec4<f32>{
+fn massPotential_to_color(energy:f32) -> vec4<f32>{
 
     //let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
     //let adj_energy = energy;

@@ -9,8 +9,8 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
 
     const isRunning = ref<boolean>(true) // Is the simulation running
 
-    const energyStates = ref<number[]>([]) // Current energy states for the particles
-    const maxEnergy = ref<number>(0)
+    const massPotentials = ref<number[]>([]) // Current energy states for the particles
+    const maxMassPotential = ref<number>(0)
 
     const currentColors = ref<Float32Array>() // Current colors for the particles
     const rulesMatrix = ref<number[][]>([]) // Rules matrix for each color
@@ -111,7 +111,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
         engineType, sidebarLeftOpen, isLockedPointer, isHudLocked,
         isRunning,
         rulesMatrix, minRadiusMatrix, maxRadiusMatrix, currentColors,
-        energyStates,maxEnergy,
+        massPotentials,maxMassPotential,
         simWidth, simHeight, linkProportions,
         numParticles, particleSize, numColors, zoomSmoothing, panSmoothing,
         is3D, isParticleGlow, isAdditiveBlending, isWallRepel, isWallWrap, wallState, isMirrorWrap, isInfiniteMirrorWrap, mirrorWrapCount, screenMultiplierForGridSize,
