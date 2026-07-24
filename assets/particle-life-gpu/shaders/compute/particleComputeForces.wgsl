@@ -184,21 +184,31 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                     let invDist = inverseSqrt(distSquared);
                     let dist = distSquared * invDist;
                     let minR = interaction.y;
-                    var force : f32;
+                    //var force : f32;
 
-                    //TODO: Implement alternate toggleable calculation which calculates repel force proportional to the current energy state
+                    //let force = force_calc_original(dist, interaction, repelForce);
+                    //let force = force_calc_dist(dist, interaction, repelForce);
+                    //let force = force_calc_energy_linear(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
+                    //let force = force_calc_energy_sigmoid(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
+                    let force = force_calc_energy_linear_sigmoid(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
+
                     if (dist < minR) {
                         totalEnergyNew++;
-//                        force = (options.repel / minR) * dist - options.repel;
-//                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
-//                        force = (dist / minR - 1.0) * options.repel;
-                        force = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
-                    } else {
-                        let rule = interaction.x;
-                        let mid = (minR + maxR) * 0.5;
-                        let slope = rule / (mid - minR);
-                        force = fma(-slope, abs(dist - mid), rule*interactModifier);
                     }
+
+                    //TODO: Implement alternate toggleable calculation which calculates repel force proportional to the current energy state
+//                     if (dist < minR) {
+//                         totalEnergyNew++;
+// //                        force = (options.repel / minR) * dist - options.repel;
+// //                        force = (dist * (1.0 / minR) - 1.0) * options.repel;
+// //                        force = (dist / minR - 1.0) * options.repel;
+//                         force = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
+//                     } else {
+//                         let rule = interaction.x;
+//                         let mid = (minR + maxR) * 0.5;
+//                         let slope = rule / (mid - minR);
+//                         force = fma(-slope, abs(dist - mid), rule*interactModifier);
+//                     }
 
                     let scaledForce = force * invDist;
                     totalForce.x = fma(r.x, scaledForce, totalForce.x);
@@ -215,6 +225,151 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
     particlesDestination[id.x] = particle;
 
     metrics.particlesEnergy[id.x] = totalEnergyNew;
+}
+
+fn force_calc_original(dist : f32, interaction : vec3<f32>, repelForce : f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    if (dist < minR) {
+        force = fma(dist / minR, repelForce, -repelForce);
+    } else {
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule);
+    }
+
+    return force;
+}
+
+fn force_calc_dist(dist : f32, interaction : vec3<f32>, repelForce : f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    //a and b are hard-coded for now. Should be paramaterized to the two interval bounds of min radius
+    let a = 12f;
+    let b = 24f;
+
+    let i = 0.1f;
+    let c = 0.3f;
+    let d = 2.5f;
+
+    if (dist < minR) {
+        let repelModifier = ((a*i)/b)*(dist-a)*(dist-b);
+        let repelFactor = (1 + repelModifier) * repelForce;
+        force = repelFactor;
+    } else {
+        let repelModifier = ((2f*c*a*i*dist)*(dist-b))/(b*exp((c*a*d*(dist-b))/b));
+        let repelFactor = (1 + repelModifier) * repelForce;
+
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule) + repelFactor;
+    }
+
+    return force;
+}
+
+fn force_calc_energy_linear(dist : f32, interaction : vec3<f32>, repelForce : f32, energy_state: f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    let crit = 200f;
+
+    //let repelModifier = 1+ ( a/(1+exp(b-energy_state)) );
+
+    let repelModifier = 1+ ( energy_state / crit );
+
+    if (dist < minR) {
+        let repelFactor = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
+        force = repelFactor;
+    } else {
+
+        let repelFactor = repelForce*repelModifier;
+
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule);
+    }
+
+    return force;
+}
+
+fn force_calc_energy_sigmoid(dist : f32, interaction : vec3<f32>, repelForce : f32, energy_state: f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    let a = 4f;
+    let b = 200f;
+
+    let repelModifier = 1+ ( a/(1+exp(b-energy_state)) );
+
+    if (dist < minR) {
+        let repelFactor = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
+        force = repelFactor;
+    } else {
+
+        let repelFactor = repelForce*repelModifier;
+
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule);
+    }
+
+    return force;
+}
+
+fn force_calc_energy_linear_sigmoid(dist : f32, interaction : vec3<f32>, repelForce : f32, energy_state: f32) -> f32{
+
+    var force : f32;
+    let rule = interaction.x;
+    let minR = interaction.y;
+    let maxR = interaction.z;
+
+    let a = 7f;
+    let b = 350f;
+    let c = 1f;
+
+    let lower = b-a;
+    let upper = b+a;
+
+    var repelModifier = 1f;
+
+    if(energy_state > lower && energy_state < upper ){
+        repelModifier = 1f + ( a/(1f + exp(b-energy_state)) );
+    }
+    else if (energy_state < upper){
+        repelModifier = ( energy_state/lower);
+    }
+    else{
+        repelModifier = ((energy_state-a-b)/pow(a,2))+a+c;
+    }
+
+    if (dist < minR) {
+        let repelFactor = fma(dist / minR, repelForce*repelModifier, -repelForce*repelModifier);
+        force = repelFactor;
+    } else {
+
+        let repelFactor = repelForce*repelModifier;
+
+        let mid = (minR + maxR) * 0.5;
+        let slope = rule / (mid - minR);
+        force = fma(-slope, abs(dist - mid), rule);
+    }
+
+    return force;
 }
 
 //@compute @workgroup_size(64)

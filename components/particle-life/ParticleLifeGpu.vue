@@ -154,8 +154,8 @@
                                         tooltip="Subdivides the interaction radius into smaller grid cells. <br> Default: 2 (fastest in most cases). <br> Increasing subdivisions can improve performance for simulations with very large radii."
                                         :min="1" :max="5" :step="1" v-model="particleLife.cellSubdivisions">
                             </RangeInput>
-                            <MassPotentialChart :store="particleLife">
-                            </MassPotentialChart>
+                            <!-- <MassPotentialChart :store="particleLife">
+                            </MassPotentialChart> -->
                         </Collapse>
                         <Collapse label="Presets" icon="i-tabler-sparkles text-amber-500"
                                   tooltip="Choose predefined configurations to quickly set up your simulation.">
@@ -1300,7 +1300,7 @@ export default defineComponent({
             particleLife.massPotentials = [...simMetricsData.slice(1)];
             particleLife.maxMassPotential = simMetricsData.slice(1).reduce((a, b) => Math.max(a, b), -Infinity);
 
-            console.log(simMetricsData)
+            //console.log(simMetricsData)
         }
 
         const regenerateLife = async () => {
@@ -1994,7 +1994,7 @@ export default defineComponent({
             const debugOptionsData = new ArrayBuffer(8)
             const debugOptionsView = new DataView(debugOptionsData)
             debugOptionsView.setUint32(0, isDebugHeatmapActive ? 1 : 0, true)
-            console.log("isDebugHeatmapActive: "+isDebugHeatmapActive);
+            //console.log("isDebugHeatmapActive: "+isDebugHeatmapActive);
             debugOptionsView.setFloat32(4, debugMaxParticleCount, true)
 
             if (!debugOptionsBuffer) {
