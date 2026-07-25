@@ -85,6 +85,18 @@
                                         tooltip="Controls how much friction slows particles down. <br> Higher values reduce speed and help stabilize the system."
                                         :min="0" :max="1" :step="0.01" v-model="particleLife.frictionFactor" mt-2>
                             </RangeInput>
+                            <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Repel Force Calculation :</p>
+                            <SelectInput name="repel-calc"
+                                         :model-value="particleLife.forceCalcMode"
+                                         @update:model-value="particleLife.forceCalcMode = $event "
+                                         :options="[
+                                             { id: 0, name: 'Original', category: 'Method' },
+                                             { id: 1, name: 'Linear', category: 'Method' },
+                                             { id: 2, name: 'Sigmoid', category: 'Method' },
+                                             { id: 3, name: 'Linear Sigmoid', category: 'Method' },
+                                             { id: 4, name: 'Linear Sigmoid Nlog', category: 'Method' },
+                                         ]">
+                            </SelectInput>
 
                             <hr border-gray-500 my-2>
                             <div flex items-center justify-between gap-2>
@@ -117,7 +129,6 @@
                                   tooltip="Provides tools for visualizing the simulation's internal state. <br> Toggle the grid view to see spatial bins or activate a heatmap to analyze particle density. <br> These features are useful for debugging and performance tuning."
                                   opened >
                             <div v-show="particleLife.useSpatialHash">
-                                <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Maximal Energy State :</p>
 
                                 <p text-gray-300 text-2sm underline mb-1 class="-mt-0.5">Spatial Bins Overlay :</p>
                                 <div flex items-center gap-2>
@@ -565,6 +576,7 @@ export default defineComponent({
         // Define variables for the simulation
         let repel: number = particleLife.repel // Repel force between particles
         let forceFactor: number = particleLife.forceFactor // Adjust the overall force applied between particles (can't be 0)
+        let forceCalcMode: number = particleLife.forceCalcMode //Alternative calculations for the repel force between particles
         let frictionFactor: number = particleLife.frictionFactor // Slow down the particles (0 to 1, where 0 is no friction)
         let NUM_PARTICLES: number = particleLife.numParticles
         let NEW_NUM_PARTICLES: number = NUM_PARTICLES
@@ -1950,7 +1962,7 @@ export default defineComponent({
             }
         }
         const updateSimOptionsBuffer = () => {
-            const simOptionsData = new ArrayBuffer(80)
+            const simOptionsData = new ArrayBuffer(84)
             const simOptionsView = new DataView(simOptionsData)
             simOptionsView.setFloat32(0, SIM_WIDTH, true)
             simOptionsView.setFloat32(4, SIM_HEIGHT, true)
@@ -1973,6 +1985,7 @@ export default defineComponent({
             simOptionsView.setUint32(68, GRID_OFFSET_Y, true)
             simOptionsView.setUint32(72, mirrorWrapCount, true)
             simOptionsView.setUint32(76, CELL_SUBDIVISIONS, true)
+            simOptionsView.setFloat32(80, forceCalcMode, true)
 
             if (!simOptionsBuffer) {
                 simOptionsBuffer = device.createBuffer({
@@ -3588,6 +3601,7 @@ export default defineComponent({
         watchAndUpdateSimOptions(() => particleLife.particleSize, (value: number) => PARTICLE_SIZE = value)
         watchAndUpdateSimOptions(() => particleLife.repel, (value: number) => repel = value)
         watchAndUpdateSimOptions(() => particleLife.forceFactor, (value: number) => forceFactor = value)
+        watchAndUpdateSimOptions(() => particleLife.forceCalcMode, (value: number) => {forceCalcMode = value; console.log("Force Calc Mode:"+value)})
         watchAndUpdateSimOptions(() => particleLife.frictionFactor, (value: number) => {
             frictionFactor = value
             updateDeltaTimeBuffer(manualDeltaTimeEnabled ? manualDeltaTime : smoothedDeltaTime)

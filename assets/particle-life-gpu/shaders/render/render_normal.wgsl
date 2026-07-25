@@ -18,6 +18,7 @@ struct SimOptions {
     gridOffsetX: u32,
     gridOffsetY: u32,
     mirrorWrapCount: u32,
+    forceCalcMode: u32,
 };
 struct Particle {
     x : f32,

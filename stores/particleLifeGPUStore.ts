@@ -60,10 +60,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
     const isTrackerIndicatorVisible = ref<boolean>(true) // Show/hide the tracker indicator overlay
     const trackerCameraSmoothing = ref<number>(0.75) // Smoothing factor for camera tracking (0 = no smoothing, 1 = instant)
 
-    // Define force properties
-    //TODO: introduce an alternative repel definition that is a calculated value: increases in proportion to the current neighborhood size of the particle
-    //const isAlternateRepelMode = ref<boolean>(false)
-    //const alternate_repel = computed({})
+    const forceCalcMode = ref<number>(0)
     const repel = ref<number>(1) // repel force for particles that are too close to each other
     const forceFactor = ref<number>(1.0) // Adjust the overall force applied between particles (can't be 0)
     const frictionFactor = ref<number>(0.3) // Slow down the particles (0 to 1, where 0 is no friction)
@@ -119,7 +116,7 @@ export const useParticleLifeGPUStore = defineStore('particleLifeGPU', () => {
         isDriftCamActive, driftCamResetOnPan, driftCamSpeed, driftCamAmplitude, driftCamZoomRange,
         isTrackerActive, isTrackerSelectionActive, isTrackerCameraActive, isTrackerIndicatorVisible, trackerCameraSmoothing,
         minRadiusRange, maxRadiusRange, currentMaxRadius,
-        repel, forceFactor, frictionFactor, useSpatialHash,
+        repel, forceCalcMode, forceFactor, frictionFactor, useSpatialHash,
         showLiveDeltaTime, manualDeltaTimeEnabled, manualDeltaTime,
         isBrushActive, brushes, brushRadius, brushIntensity, brushType, attractForce, repulseForce, brushDirectionalForce, showBrushCircle,
         glowSize, glowIntensity, glowSteepness, particleOpacity,
