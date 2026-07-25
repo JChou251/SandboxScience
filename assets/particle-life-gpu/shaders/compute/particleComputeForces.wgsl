@@ -302,8 +302,8 @@ fn force_calc_energy_linear_sigmoid(dist : f32, interaction : vec3<f32>, repelFo
     let minR = interaction.y;
     let maxR = interaction.z;
 
-    let a = 7f;
-    let b = 350f;
+    let a = 1.5f;
+    let b = 2000f;
     let c = 1f;
 
     let lower = b-a;
@@ -343,9 +343,9 @@ fn force_calc_energy_linear_sigmoid_nlog(dist : f32, interaction : vec3<f32>, re
     let minR = interaction.y;
     let maxR = interaction.z;
 
-    let a = 7f;
-    let b = 350f;
-    let c = 1f;
+    let a = 1.5f;
+    let b = 2000f;
+    let c = 0f;
 
     let lower = b-a;
     let upper = b+a;
@@ -371,7 +371,7 @@ fn force_calc_energy_linear_sigmoid_nlog(dist : f32, interaction : vec3<f32>, re
 
         let mid = (minR + maxR) * 0.5;
         let slope = rule / (mid - minR);
-        force = fma(-slope, abs(dist - mid), rule);
+        force = fma(-slope, abs(dist - mid), rule) + repelFactor;
     }
 
     return force;

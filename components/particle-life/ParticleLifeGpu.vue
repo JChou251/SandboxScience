@@ -1312,7 +1312,7 @@ export default defineComponent({
             particleLife.massPotentials = [...simMetricsData.slice(1)];
             particleLife.maxMassPotential = simMetricsData.slice(1).reduce((a, b) => Math.max(a, b), -Infinity);
 
-            //console.log(simMetricsData)
+            console.log(simMetricsData)
         }
 
         const regenerateLife = async () => {
@@ -1985,7 +1985,7 @@ export default defineComponent({
             simOptionsView.setUint32(68, GRID_OFFSET_Y, true)
             simOptionsView.setUint32(72, mirrorWrapCount, true)
             simOptionsView.setUint32(76, CELL_SUBDIVISIONS, true)
-            simOptionsView.setFloat32(80, forceCalcMode, true)
+            simOptionsView.setUint32(80, forceCalcMode, true)
 
             if (!simOptionsBuffer) {
                 simOptionsBuffer = device.createBuffer({

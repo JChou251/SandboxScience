@@ -77,13 +77,12 @@ fn vertexMain(
 
     let energy = metrics.particlesEnergy[instanceIndex];
 
-    //TODO: Make this toggleable
+    // Choose between rendering colors based on species or mass-potential-state, depending on debugOptions.isHeatmapActive
     let color = select(
         colors[u32(particle.particleType)],
         massPotential_to_color(f32(energy)),
         debugOptions.isHeatmapActive == 1u
     );
-    //let color = massPotential_to_color(f32(energy));
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
     let cameraCenter = vec2f(camera.centerX, camera.centerY);
@@ -117,20 +116,58 @@ fn massPotential_to_color(energy:f32) -> vec4<f32>{
     //Gradient: #00ffff - #ff6666
     //return vec4<f32>(f32(scaled_heat_factor * 255f), f32(255f - (scaled_heat_factor * 153f)), f32(255f - (scaled_heat_factor * 153f)), 1.0);
 
-    //TODO: Make these two bounds paramaterizable
-    let bound_upper = 0.75;
-    let bound_lower = 0.25;
+    var isUpper: bool;
+    var isLower: bool;
 
-    let heat_factor = energy/f32(metrics.max_energy) ;
-    if(heat_factor >= bound_upper){
+    //sigmoid calc mode
+    if(options.forceCalcMode == 2){
+
+        //TODO: Paramaterize a and b
+        let a = 4f;
+        let b = 200f;
+
+        let bound_upper = b+a;
+        let bound_lower = b-a;
+
+        isUpper = energy > bound_upper;
+        isLower = energy < bound_lower;
+
+    }
+    //composite sigmoid calc modes
+    else if(options.forceCalcMode == 3 || options.forceCalcMode == 4){
+        
+        //TODO: Paramaterize a and b
+        let a = 1.5f;
+        let b = 2000f;
+
+        let bound_upper = b+a;
+        let bound_lower = b-a;
+
+        isUpper = energy > bound_upper;
+        isLower = energy < bound_lower;
+    }
+    // normal or linear calc mode
+    else{
+        let bound_upper = 0.75;
+        let bound_lower = 0.25;
+
+        let heat_factor = energy/f32(metrics.max_energy) ;
+        
+        isUpper = heat_factor > bound_upper;
+        isLower = heat_factor < bound_lower;
+    }
+
+    if(isUpper){
         return vec4<f32>(f32(255), f32(0), f32(0), 1.0);
     }
-    else if(heat_factor <= bound_lower){
+    else if(isLower){
         return vec4<f32>(f32(0), f32(255), f32(255), 1.0);
     }
     else{
-        return vec4<f32>(f32(128), f32(128), f32(128), 1.0);
+        return vec4<f32>(f32(255), f32(255), f32(255), 1.0);
     }
+
+
 }
 
 @fragment
