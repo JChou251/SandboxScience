@@ -150,6 +150,7 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                     let minR = interaction.y;
                     var force : f32;
 
+                    //MODIFIED CODE
                     if(options.forceCalcMode == 1){
 
                         force = force_calc_energy_linear(dist, interaction, repelForce, f32(metrics.particlesEnergy[id.x]));
@@ -172,6 +173,7 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
                     if (dist < minR) {
                         totalEnergyNew++;
                     }
+                    // END OF MODIFIED CODE
 
 
                     let scaledForce = force * invDist;
@@ -188,7 +190,9 @@ fn computeForces(@builtin(global_invocation_id) id : vec3u) {
 
     particlesDestination[id.x] = particle;
 
+    // MODIFIED CODE
     metrics.particlesEnergy[id.x] = totalEnergyNew;
+    // END OF MODIFIED CODE
 }
 
 fn force_calc_original(dist : f32, interaction : vec3<f32>, repelForce : f32) -> f32{
@@ -209,6 +213,7 @@ fn force_calc_original(dist : f32, interaction : vec3<f32>, repelForce : f32) ->
     return force;
 }
 
+// MODIFIED CODE
 fn force_calc_dist(dist : f32, interaction : vec3<f32>, repelForce : f32) -> f32{
 
     var force : f32;
@@ -376,6 +381,8 @@ fn force_calc_energy_linear_sigmoid_nlog(dist : f32, interaction : vec3<f32>, re
 
     return force;
 }
+
+// END OF MODIFIED CODE
 
 //@compute @workgroup_size(64)
 //fn computeForces(@builtin(global_invocation_id) id : vec3u) {

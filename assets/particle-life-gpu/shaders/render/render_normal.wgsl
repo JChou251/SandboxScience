@@ -77,12 +77,14 @@ fn vertexMain(
 
     let energy = metrics.particlesEnergy[instanceIndex];
 
+    // MODIFIED CODE
     // Choose between rendering colors based on species or mass-potential-state, depending on debugOptions.isHeatmapActive
     let color = select(
         colors[u32(particle.particleType)],
         massPotential_to_color(f32(energy)),
         debugOptions.isHeatmapActive == 1u
     );
+    // END OF MODIFIED CODE
 
     let cameraScale = vec2f(camera.scaleX, -camera.scaleY);
     let cameraCenter = vec2f(camera.centerX, camera.centerY);
@@ -99,6 +101,7 @@ fn vertexMain(
     );
 }
 
+// MODIFIED CODE
 fn massPotential_to_color(energy:f32) -> vec4<f32>{
 
     //let adj_energy = pow(energy,2); //adjust energy state so that extreme values are more visible
@@ -169,6 +172,7 @@ fn massPotential_to_color(energy:f32) -> vec4<f32>{
 
 
 }
+// END OF MODIFIED CODE
 
 @fragment
 fn fragmentMain(in: VertexOutput) -> @location(0) vec4f {
