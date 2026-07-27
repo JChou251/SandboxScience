@@ -1,3 +1,28 @@
+# ECE750 README
+
+John Chou
+ECE750
+Spring 2026
+2026/07/27
+
+Individual Research Project - Code Attributions
+
+The software component of the project is an extension of an open source project: Sandbox Science (can be found at the following repo: https://github.com/DicSo92/SandboxScience)
+
+The modified code that I created for this project, along with a commit log, is located in a fork at this repo: https://github.com/DicSo92/SandboxScience
+
+All of my modified code is located in the following four files
+- particleLifeGPUStore : prop and variable changes
+- ParticleLifeGpu.vue : UI changes
+- particleComputeForces.wgsl : alternative force calculations (changes marked by comments in file)
+- render_normal.wgsl : toggleable heatmap (changes marked by comments in file)
+
+The rest of the code was written by the contributors to the open-source SandboxScience project
+
+# END OF ECE750 README
+
+# -----------------------------------------------------------
+
 # <img src="./public/icon.svg" alt="Sandbox Science Icon" width="40" style="vertical-align: middle;" /> Sandbox Science
 
 **Sandbox Science** is an interactive platform designed to make learning and exploring scientific concepts fun and accessible. The platform offers a variety of simulations, from cellular automata like Game of Life to complex particle interactions in Particle Life, allowing users to dive deep into the fascinating world of science through hands-on, visual experiences.
